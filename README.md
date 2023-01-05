@@ -2,7 +2,7 @@
 
 Small project showing how to trace requests across services(`spring boot and python/flask`) using Prometheus/Zipkin/Kibana.
 
-More details look at 
+More details look at https://www.linkedin.com/pulse/tracing-requests-across-multiple-services-rodrigo-rodrigues
 
 ### Installation
 
