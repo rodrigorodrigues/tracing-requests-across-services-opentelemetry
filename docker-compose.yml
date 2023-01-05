@@ -1,0 +1,74 @@
+version: '3.2'
+services:
+  prometheus:
+    image: prom/prometheus
+    container_name: prom
+    volumes:
+      - ./prometheus-config.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+
+  zipkin:
+    image: openzipkin/zipkin
+    container_name: zipkin
+    ports:
+      - "9411:9411"
+
+  elasticsearch:
+    image: elasticsearch:7.14.1
+    container_name: elasticsearch
+    ports:
+      - "9200:9200"
+    environment:
+      - "discovery.type=single-node"
+    volumes:
+      - ./elasticsearch/data:/usr/share/elasticsearch/data:rw              # Persistence data
+
+  logstash:
+    image: logstash:7.14.1
+    container_name: logstash
+    ports:
+      - "5000:5000"
+      - "5044:5044"
+      - "9600:9600"
+    volumes:
+      - ./logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro                # Pipeline configuration
+    depends_on:
+      - elasticsearch
+
+  kibana:
+    image: kibana:7.14.1
+    container_name: kibana
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+
+  spring-boot-service:
+    image: spring-boot-opentelemetry:0.0.1-SNAPSHOT
+    container_name: spring-boot-service
+    environment:
+      - address-service-url=http://python-service:8091
+      - logstash.host=logstash
+      - SPRING_ZIPKIN_BASE_URL=http://zipkin:9411
+      - SERVER_PORT=8080
+    depends_on:
+      - prometheus
+      - zipkin
+      - logstash
+    ports:
+      - "8080:8080"
+
+  python-service:
+    build:
+      args:
+        - PORT=8091
+      context: ./simple-flask-python-server
+      dockerfile: Dockerfile
+    container_name: python-service
+    depends_on:
+      - prometheus
+      - zipkin
+      - logstash
+    ports:
+      - "8091:8091"
