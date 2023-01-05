@@ -1,4 +1,4 @@
-package com.example.springbootopentelemetry;
+package com.example.springboot;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -28,10 +28,10 @@ import java.util.stream.Collectors;
 
 @SpringBootApplication
 @Slf4j
-public class SpringBootOpenTelemetryApplication {
+public class SimpleRestApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(SpringBootOpenTelemetryApplication.class, args);
+        SpringApplication.run(SimpleRestApplication.class, args);
     }
 
     @Bean

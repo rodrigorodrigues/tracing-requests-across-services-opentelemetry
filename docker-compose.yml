@@ -45,7 +45,7 @@ services:
       - elasticsearch
 
   spring-boot-service:
-    image: spring-boot-opentelemetry:0.0.1-SNAPSHOT
+    image: spring-boot-service:0.0.1-SNAPSHOT
     container_name: spring-boot-service
     environment:
       - address-service-url=http://python-service:8091

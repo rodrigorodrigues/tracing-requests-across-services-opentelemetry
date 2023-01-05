@@ -20,13 +20,13 @@ scrape_configs:
     static_configs:
       - targets: ['0.0.0.0:9090']
 
-  - job_name: 'spring-boot-opentelemetry'
+  - job_name: 'spring-boot-service'
     metrics_path: '/actuator/prometheus'
     scrape_interval: 15s
     static_configs:
       - targets: ['spring-boot-service:8080']
 
-  - job_name: 'simple-flask=python-server'
+  - job_name: 'simple-flask-python-server'
     metrics_path: '/metrics'
     scrape_interval: 15s
     static_configs:

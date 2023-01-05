@@ -1,4 +1,4 @@
-package com.example.springbootopentelemetry;
+package com.example.springboot;
 
 import com.github.tomakehurst.wiremock.client.WireMock;
 import org.junit.jupiter.api.BeforeEach;
@@ -23,7 +23,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest(properties = "address-service-url=http://localhost:${wiremock.server.port}")
 @AutoConfigureMockMvc
 @AutoConfigureWireMock(port = 0)
-class SpringBootOpenTelemetryApplicationTests {
+class SimpleRestApplicationTests {
     @Autowired
     MockMvc mockMvc;
 
