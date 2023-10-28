@@ -15,7 +15,7 @@
         <file>${LOGGING_FILE}</file>
         <encoder
             class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-            <Pattern>%d %p %C{1.} [%t] %m%n</Pattern>
+            <Pattern>%d %-5p [%X{sessionId}] [%X{userId}] %C{1}.%M:%L] %m%n</Pattern>
         </encoder>
 
         <rollingPolicy
@@ -31,7 +31,7 @@
 
 
     <appender name="logstash" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
-        <destination>${LOGSTASH_HOST:- }:${LOGSTASH_PORT:- }</destination>
+        <destination>${LOGSTASH_HOST:-}:${LOGSTASH_PORT:-}</destination>
         <param name="Encoding" value="UTF-8"/>
 
         <encoder class="net.logstash.logback.encoder.LogstashEncoder"/>

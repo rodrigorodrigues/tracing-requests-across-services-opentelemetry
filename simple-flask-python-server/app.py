@@ -52,6 +52,8 @@ addresses = [{'id': 1, 'street': 'test', 'person_id': 1}, {'id': 2, 'street': 'a
 
 @app.route('/v1/addresses/person/<id>')
 def get_all(id):
+    log.info(f'Print all headers: {request.headers}')
+
     trace_id = request.headers.get('X-B3-TraceId')
     app.logger.info(f'FlaskLog - Get address by person_id: {id}\t traceId: {trace_id}')
     log.info(f'Get address by person_id: {id}\t traceId: {trace_id}')
