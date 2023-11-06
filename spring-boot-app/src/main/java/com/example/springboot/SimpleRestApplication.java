@@ -1,5 +1,12 @@
 package com.example.springboot;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.opentelemetry.api.logs.GlobalLoggerProvider;
+import io.opentelemetry.exporter.otlp.logs.OtlpGrpcLogRecordExporter;
+import io.opentelemetry.sdk.logs.SdkLoggerProvider;
+import io.opentelemetry.sdk.logs.export.LogRecordExporter;
+import io.opentelemetry.sdk.logs.export.SimpleLogRecordProcessor;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
@@ -10,14 +17,20 @@ import org.mapstruct.Mapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.kafka.core.DefaultKafkaProducerFactory;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.stereotype.Repository;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import org.springframework.web.ErrorResponseException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
@@ -29,9 +42,33 @@ import java.util.stream.Collectors;
 @SpringBootApplication
 @Slf4j
 public class SimpleRestApplication {
-
     public static void main(String[] args) {
+        /*OpenTelemetryAppender.install(OpenTelemetrySdk.builder()
+                .setLoggerProvider(SdkLoggerProvider)
+                .build());*/
+/*
+        LogRecordExporter otlpGrpcLogRecordExporter = OtlpGrpcLogRecordExporter.builder()
+                .setEndpoint("http://localhost:4317")
+                .build();
+        SdkLoggerProvider sdkLoggerProvider = SdkLoggerProvider.builder().addLogRecordProcessor( SimpleLogRecordProcessor.create( otlpGrpcLogRecordExporter ) ).build();
+        GlobalLoggerProvider.set( sdkLoggerProvider );
+*/
+        // Find OpenTelemetryAppender in logback configuration and install openTelemetrySdk
+        //OpenTelemetryAppender.install(OpenTelemetrySdk.builder().setLoggerProvider(sdkLoggerProvider).build());
         SpringApplication.run(SimpleRestApplication.class, args);
+    }
+    @Bean
+    public ProducerFactory<String, Object> producerFactory(KafkaProperties kafkaProperties) {
+        log.debug("AopConfiguration:producerFactory:kafkaProperties: {}", kafkaProperties);
+        return new DefaultKafkaProducerFactory<>(kafkaProperties.buildProducerProperties());
+    }
+
+    @Bean
+    public KafkaTemplate<String, Object> kafkaTemplate(ProducerFactory<String, Object> producerFactory) {
+        log.debug("AopConfiguration:kafkaTemplate:producerFactory: {}", producerFactory);
+        KafkaTemplate<String, Object> kafkaTemplate = new KafkaTemplate<>(producerFactory);
+        kafkaTemplate.setObservationEnabled(true);
+        return kafkaTemplate;
     }
 
     @Bean
@@ -49,6 +86,8 @@ public class SimpleRestApplication {
     @AllArgsConstructor
     class PersonController {
         private final PersonService personService;
+        private final KafkaTemplate<String, Object> kafkaTemplate;
+        private final ObjectMapper objectMapper;
 
         @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
         public ResponseEntity<List<PersonDto>> get(@RequestParam(name = "name", required = false) String name) {
@@ -82,6 +121,16 @@ public class SimpleRestApplication {
         public ResponseEntity<?> delete(@PathVariable Integer id) {
             personService.removeById(id);
             return ResponseEntity.noContent().build();
+        }
+
+        @ExceptionHandler(ErrorResponseException.class)
+        ResponseEntity<?> errorHandlerException(ErrorResponseException e) throws JsonProcessingException {
+            log.warn("Sending kafka message with error");
+            ResponseEntity<ProblemDetail> response = ResponseEntity.status(e.getStatusCode())
+                    .headers(e.getHeaders())
+                    .body(e.getBody());
+            kafkaTemplate.send("topic", objectMapper.writeValueAsString(response));
+            return response;
         }
     }
 

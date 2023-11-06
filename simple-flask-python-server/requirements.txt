@@ -6,3 +6,9 @@ py_zipkin
 itsdangerous==2.0.1
 python-dotenv
 python-logstash-async
+opentelemetry-instrumentation-flask
+opentelemetry-exporter-otlp
+opentelemetry-distro
+opentelemetry-instrumentation-logging
+opentelemetry-api
+opentelemetry-sdk

@@ -33,3 +33,8 @@ build/
 .vscode/
 elasticsearch/
 logstash/
+simple-flask-python-server/__pycache__
+otelcol-config.yaml.*
+fluent-bit.conf.tmp
+spring-boot-app/target
+nginx.conf
