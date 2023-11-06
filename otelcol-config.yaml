@@ -1,0 +1,72 @@
+extensions:
+    memory_ballast:
+        size_mib: 512
+    zpages:
+        endpoint: 0.0.0.0:55679
+    health_check:
+receivers:
+    otlp:
+        protocols:
+            grpc:
+            http:
+#    fluentforward:
+#        endpoint: 0.0.0.0:8006
+exporters:
+    otlp:
+        endpoint: tempo:4317
+        sending_queue:
+            enabled: false
+        retry_on_failure:
+            enabled: false
+        tls:
+            insecure: true
+    logging:
+#        loglevel: "DEBUG"
+        verbosity: detailed
+    loki:
+        endpoint: http://loki:3100/loki/api/v1/push
+        tls:
+            insecure: true
+    elasticsearch/log:
+        endpoints: http://elasticsearch:9200
+        logs_index: my_log_index
+
+    prometheusremotewrite:
+        endpoint: http://prometheus:9090/api/prom/push
+        target_info:
+            enabled: false
+        tls:
+            insecure: true
+    prometheus:
+        endpoint: "0.0.0.0:1234"
+#        namespace: test-space
+#        const_labels:
+#            label1: value1
+#            "another label": spaced value
+        send_timestamps: true
+        metric_expiration: 180m
+        enable_open_metrics: true
+        add_metric_suffixes: false
+        resource_to_telemetry_conversion:
+            enabled: true
+processors:
+    batch:
+    attributes:
+        actions:
+            - action: insert
+              key: loki.attribute.labels
+              value: app_name, traceId
+service:
+    pipelines:
+        metrics:
+            receivers: [ otlp ]
+            processors: [ batch ]
+            exporters: [ prometheusremotewrite, prometheus ]
+        traces:
+            receivers: [otlp]
+            exporters: [logging, otlp]
+        logs:
+            receivers: [  otlp ] #fluentforward
+            processors: [ attributes, batch ]
+            exporters: [ logging, elasticsearch/log ] #loki
+    extensions: [ memory_ballast, zpages, health_check ]
