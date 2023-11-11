@@ -1,38 +1,75 @@
 package util
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"github.com/IBM/sarama"
 	"github.com/dnwe/otelsarama"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
+	sdk "go.opentelemetry.io/otel/sdk/metric"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 	"go.opentelemetry.io/otel/trace"
 	"log"
-	"math/rand"
+	"net/http"
 	"os"
 	"os/signal"
 	"strings"
+	"time"
 )
 
 var (
-	tracer  = otel.Tracer("readKafka")
-	meter   = otel.Meter("readKafka")
-	rollCnt metric.Int64Counter
+	//tracer                  = otel.Tracer("readKafka")
+	//meter                   = otel.Meter("readKafka")
+	//requestCountInternal    metric.Int64Counter
+	//requestDurationInternal metric.Float64Histogram
+	apiClientUrl = ""
 )
 
-func ReadKafkaMessages(kafkaAddress string, topic string, group string) {
+func ReadKafkaMessages(kafkaAddress string, topic string, group string, apiClient string, meterProvider *sdk.MeterProvider) {
+	// Create an instance on a meter for the given instrumentation scope
+	meter := meterProvider.Meter(
+		"github.com/.../example/manual-instrumentation",
+		metric.WithInstrumentationVersion("v0.0.0"),
+	)
 
+	// Create two synchronous instruments: counter and histogram
+	requestCount, err := meter.Int64Counter(
+		"request_count",
+		metric.WithDescription("Incoming request count"),
+		metric.WithUnit("request"),
+	)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	//requestCountInternal = requestCount
+	requestDuration, err := meter.Float64Histogram(
+		"duration",
+		metric.WithDescription("Incoming end to end duration"),
+		metric.WithUnit("{call}"),
+	)
+	//requestDurationInternal = requestDuration
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	apiClientUrl = apiClient
 	brokerList := strings.Split(kafkaAddress, ",")
 	log.Printf("Kafka brokers: %s", strings.Join(brokerList, ", "))
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
+
+	requestStartTime := time.Now()
+
 	if err := startConsumerGroup(ctx, brokerList, topic, group); err != nil {
 		log.Fatal(err)
 	}
+
+	elapsedTime := float64(time.Since(requestStartTime)) / float64(time.Millisecond)
+	requestCount.Add(ctx, 1)
+	requestDuration.Record(ctx, elapsedTime)
 
 	<-ctx.Done()
 }
@@ -69,20 +106,38 @@ func printMessage(msg *sarama.ConsumerMessage) {
 	ctx := otel.GetTextMapPropagator().Extract(context.Background(), otelsarama.NewConsumerMessageCarrier(msg))
 
 	tr := otel.Tracer("consumer")
-	_, span := tr.Start(ctx, "consuming message for traceID="+headers["X-B3-TraceId"], trace.WithAttributes(
+	traceId := headers["X-B3-TraceId"]
+	_, span := tr.Start(ctx, "consuming message for traceID="+traceId, trace.WithAttributes(
 		semconv.MessagingOperationProcess,
 	))
 	defer span.End()
 
-	roll := 1 + rand.Intn(6)
+	//roll := 1 + rand.Intn(6)
 
-	rollValueAttr := attribute.Int("roll.value", roll)
-	span.SetAttributes(rollValueAttr)
-	rollCnt.Add(ctx, 1, metric.WithAttributes(rollValueAttr))
+	//rollValueAttr := attribute.Int("roll.value", roll)
+	//span.SetAttributes(rollValueAttr)
+	//rollCnt.Add(ctx, 1, metric.WithAttributes(rollValueAttr))
+	log.Println("Successful read message: ", string(msg.Value))
+	log.Println("Successful read message:headers: ", headers)
 
-	log.Println("Successful to read message:headers: ", headers)
-	log.Println("Reading Kafka Message for traceID=" + headers["X-B3-TraceId"])
-	log.Println("Successful to read message: ", string(msg.Value))
+	req, err := http.NewRequest("POST", apiClientUrl, bytes.NewBuffer([]byte(fmt.Sprintf("{\"msg\": \"Processing error with traceId: %v\"}", traceId))))
+	if err != nil {
+		panic(err)
+	}
+
+	for k, v := range headers {
+		req.Header.Add(k, v)
+	}
+	req.Header.Add("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	log.Println("Response api nodejs-express: ", resp)
 }
 
 // Consumer represents a Sarama consumer group consumer.
@@ -100,16 +155,16 @@ func (consumer *Consumer) Cleanup(sarama.ConsumerGroupSession) error {
 
 // ConsumeClaim must start a consumer loop of ConsumerGroupClaim's Messages().
 func (consumer *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
-	var err error
-	rollCntInit, err := meter.Int64Counter("dice.rolls",
-		metric.WithDescription("The number of rolls by roll value"),
-		metric.WithUnit("{roll}"))
+	/*	var err error
+		rollCntInit, err := meter.Int64Counter("dice.rolls",
+			metric.WithDescription("The number of rolls by roll value"),
+			metric.WithUnit("{roll}"))
 
-	if err != nil {
-		return err
-	}
-	rollCnt = rollCntInit
-
+		if err != nil {
+			return err
+		}
+		rollCnt = rollCntInit
+	*/
 	// NOTE:
 	// Do not move the code below to a goroutine.
 	// The `ConsumeClaim` itself is called within a goroutine, see:

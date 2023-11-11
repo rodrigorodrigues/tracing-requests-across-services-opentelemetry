@@ -25,6 +25,7 @@ management:
         resource-attributes:
           "service.name": ${spring.application.name}
           "app_name": ${spring.application.name}
+        url: http://localhost:4318/v1/metrics
 logging:
   pattern:
     level: "%5p [${spring.application.name:},traceID=%X{traceId:-},%X{spanId:-}]"

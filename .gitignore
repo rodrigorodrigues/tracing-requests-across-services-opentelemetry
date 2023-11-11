@@ -38,3 +38,4 @@ otelcol-config.yaml.*
 fluent-bit.conf.tmp
 spring-boot-app/target
 nginx.conf
+tempo-data

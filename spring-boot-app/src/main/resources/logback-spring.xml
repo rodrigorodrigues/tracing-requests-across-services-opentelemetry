@@ -13,10 +13,18 @@
     <appender name="RollingFile"
               class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${LOGGING_FILE}</file>
+        <pattern>${CONSOLE_LOG_PATTERN}</pattern>
+<!--        <charset>${CONSOLE_LOG_CHARSET}</charset>-->
         <encoder
                 class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-            <Pattern>%d %-5p [${APP_NAME},traceID=%X{traceId},%X{spanId}] %C{1}.%M:%L %m%n</Pattern>
+            <Pattern>${CONSOLE_LOG_PATTERN}</Pattern>
         </encoder>
+        <!--
+                <encoder
+                        class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+                    <Pattern>%d %-5p [${APP_NAME},traceID=%X{traceId},%X{spanId}] %C{1}.%M:%L %m%n</Pattern>
+                </encoder>
+        -->
 
         <rollingPolicy
                 class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
@@ -29,6 +37,7 @@
         </rollingPolicy>
     </appender>
 
+<!--
     <appender name="OpenTelemetry" class="io.opentelemetry.instrumentation.logback.appender.v1_0.OpenTelemetryAppender">
         <encoder
                 class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
@@ -38,6 +47,7 @@
         <captureMdcAttributes>*</captureMdcAttributes>
         <captureMarkerAttribute>true</captureMarkerAttribute>
     </appender>
+-->
 
    <!-- <appender name="RollingFile"
               class="ch.qos.logback.core.rolling.RollingFileAppender">

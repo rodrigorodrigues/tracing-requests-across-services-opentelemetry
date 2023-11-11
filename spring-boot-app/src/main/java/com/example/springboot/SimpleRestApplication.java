@@ -2,11 +2,6 @@ package com.example.springboot;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.opentelemetry.api.logs.GlobalLoggerProvider;
-import io.opentelemetry.exporter.otlp.logs.OtlpGrpcLogRecordExporter;
-import io.opentelemetry.sdk.logs.SdkLoggerProvider;
-import io.opentelemetry.sdk.logs.export.LogRecordExporter;
-import io.opentelemetry.sdk.logs.export.SimpleLogRecordProcessor;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
@@ -55,8 +50,23 @@ public class SimpleRestApplication {
 */
         // Find OpenTelemetryAppender in logback configuration and install openTelemetrySdk
         //OpenTelemetryAppender.install(OpenTelemetrySdk.builder().setLoggerProvider(sdkLoggerProvider).build());
+
+
+/*
+        SdkLoggerProvider sdkLoggerProvider = SdkLoggerProvider.builder().addLogRecordProcessor( SimpleLogRecordProcessor.create( OtlpJsonLoggingLogRecordExporter.create() ) ).build();
+        OpenTelemetrySdk openTelemetrySdk = OpenTelemetrySdk.builder()
+                .setLoggerProvider(sdkLoggerProvider)
+                .build();
+        GlobalOpenTelemetry.set(openTelemetrySdk);
+*/
         SpringApplication.run(SimpleRestApplication.class, args);
     }
+
+    /*@Bean
+    SdkTracerProviderBuilderCustomizer sdkTracerProviderBuilderCustomizer() {
+        return builder -> builder.addSpanProcessor(BatchSpanProcessor.builder(OtlpJsonLoggingSpanExporter.create()).build());
+    }*/
+
     @Bean
     public ProducerFactory<String, Object> producerFactory(KafkaProperties kafkaProperties) {
         log.debug("AopConfiguration:producerFactory:kafkaProperties: {}", kafkaProperties);

@@ -94,133 +94,19 @@ func main() {
 	//ctx := context.Background()
 
 	service := GetEnv("SERVICE_NAME")
-	tracerProvider := util.InitTracer(service, GetEnv("OTEL_EXPORTER_OTLP_ENDPOINT"), GetEnvAsBool("INSECURE_MODE"))
+	otlp_url := GetEnv("OTEL_EXPORTER_OTLP_ENDPOINT")
+	tracerProvider := util.InitTracer(service, otlp_url, GetEnvAsBool("INSECURE_MODE"))
 	defer tracerProvider(context.Background())
 
-	meterProvider := util.MeterProvider(service)
-	defer meterProvider(context.Background())
-
-	/*exp, err := util.NewExporter(ctx)
+	meterProvider, err := util.MeterProvider(service, otlp_url)
 	if err != nil {
-		log.Fatalf("failed to initialize exporter: %v", err)
+		panic(err)
 	}
-
-	// Create a new tracer provider with a batch span processor and the given exporter.
-	tp := util.NewTraceProvider(exp)
-
-	// Handle shutdown properly so nothing leaks.
-	defer func() { _ = tp.Shutdown(ctx) }()
-
-	otel.SetTracerProvider(tp)
-
-	// Finally, set the tracer that can be used for this package.
-	tracer = tp.Tracer("GoClientKafkaConsumerService")
-	ctxTodo := context.TODO()
-	ctxTodo, parentSpan := tracer.Start(ctxTodo, "parent")
-	defer parentSpan.End()
-	ctxTodo, childSpan := tracer.Start(ctxTodo, "child")
-	defer childSpan.End()*/
-	//End Otel
+	defer meterProvider.Shutdown(context.Background())
 
 	bootstrapServers := GetEnv("KAFKA_BOOTSTRAP_SERVERS")
 	group := GetEnv("KAFKA_GROUP")
 	topics := GetEnv("KAFKA_TOPIC")
 
-	util.ReadKafkaMessages(bootstrapServers, topics, group)
-	/*sigchan := make(chan os.Signal, 1)
-	signal.Notify(sigchan, syscall.SIGINT, syscall.SIGTERM)
-
-	c, err := kafka.NewConsumer(&kafka.ConfigMap{
-		"bootstrap.servers": bootstrapServers,
-		// Avoid connecting to IPv6 brokers:
-		// This is needed for the ErrAllBrokersDown show-case below
-		// when using localhost brokers on OSX, since the OSX resolver
-		// will return the IPv6 addresses first.
-		// You typically don't need to specify this configuration property.
-		"broker.address.family": "v4",
-		"group.id":              group,
-		"session.timeout.ms":    6000,
-		// Start reading from the first message of each assigned
-		// partition if there are no previously committed offsets
-		// for this group.
-		"auto.offset.reset": "latest",
-		// Whether or not we store offsets automatically.
-		"enable.auto.offset.store": false,
-	})
-
-	if err != nil {
-		log.Printf("Failed to create consumer: %s\n", err)
-		//childSpan.SetStatus(codes.Error, "consumer failed")
-		//childSpan.RecordError(err)
-		os.Exit(1)
-	}
-
-	log.Printf("Created Consumer %v\n", c)
-
-	err = c.Subscribe(topics, nil)
-
-	run := true
-
-	for run {
-		select {
-		case sig := <-sigchan:
-			log.Printf("Caught signal %v: terminating\n", sig)
-			run = false
-		default:
-			ev := c.Poll(100)
-			if ev == nil {
-				continue
-			}
-
-			switch e := ev.(type) {
-			case *kafka.Message:
-				carrier := propagation.MapCarrier{}
-				for _, v := range e.Headers {
-					carrier.Set(v.Key, string(v.Value))
-				}
-				ctx := otel.GetTextMapPropagator().Extract(context.Background(), carrier)
-
-				// Process the message received.
-				tr := otel.Tracer("consumer")
-				_, span := tr.Start(ctx, "consume message with headers ", trace.WithAttributes(
-					semconv.MessagingOperationProcess,
-				))
-				defer span.End()
-				log.Printf("%% Message on %s:\n%s\n",
-					e.TopicPartition, string(e.Value))
-				if e.Headers != nil {
-					log.Printf("%% Headers: %v\n", e.Headers)
-				}
-				span.SetAttributes(attribute.String("stringAttr", "Reading Kafka Message : "+string(e.Value)))
-
-				// We can store the offsets of the messages manually or let
-				// the library do it automatically based on the setting
-				// enable.auto.offset.store. Once an offset is stored, the
-				// library takes care of periodically committing it to the broker
-				// if enable.auto.commit isn't set to false (the default is true).
-				// By storing the offsets manually after completely processing
-				// each message, we can ensure atleast once processing.
-				_, err := c.StoreMessage(e)
-				if err != nil {
-					log.Printf("%% Error storing offset after message %s:\n",
-						e.TopicPartition)
-				}
-			case kafka.Error:
-				// Errors should generally be considered
-				// informational, the client will try to
-				// automatically recover.
-				// But in this example we choose to terminate
-				// the application if all brokers are down.
-				log.Fatalf("%% Error: %v: %v\n", e.Code(), e)
-				if e.Code() == kafka.ErrAllBrokersDown {
-					run = false
-				}
-			default:
-				log.Printf("Ignored %v\n", e)
-			}
-		}
-	}
-
-	log.Printf("Closing consumer\n")
-	c.Close()*/
+	util.ReadKafkaMessages(bootstrapServers, topics, group, GetEnv("NODEJS_EXPRESS_SERVER_URL"), meterProvider)
 }

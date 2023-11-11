@@ -1,14 +1,11 @@
 flask
 requests
-prometheus-flask-exporter
-flask_zipkin
-py_zipkin
 itsdangerous==2.0.1
 python-dotenv
-python-logstash-async
 opentelemetry-instrumentation-flask
 opentelemetry-exporter-otlp
 opentelemetry-distro
 opentelemetry-instrumentation-logging
 opentelemetry-api
 opentelemetry-sdk
+opentelemetry-propagator-b3

@@ -4,16 +4,15 @@ import (
 	"context"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
-	"go.opentelemetry.io/otel/exporters/stdout/stdoutmetric"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"google.golang.org/grpc/credentials"
 	"log"
-	"time"
 )
 
 func InitTracer(serviceName string, collectorURL string, insecure bool) func(context.Context) error {
@@ -57,20 +56,25 @@ func newResource(serviceName string) *resource.Resource {
 	return resources
 }
 
-func MeterProvider(serviceName string) func(context.Context) error {
-	metricExporter, err := stdoutmetric.New()
+func MeterProvider(serviceName string, collectorURL string) (*metric.MeterProvider, error) {
+	// Instantiate the OTLP HTTP exporter
+	exporter, err := otlpmetricgrpc.New(
+		context.Background(),
+		otlpmetricgrpc.WithEndpoint(collectorURL),
+	)
+
 	if err != nil {
-		return metricExporter.Shutdown
+		return nil, err
 	}
 
 	resources := newResource(serviceName)
 
 	meterProvider := metric.NewMeterProvider(
 		metric.WithResource(resources),
-		metric.WithReader(metric.NewPeriodicReader(metricExporter,
-			// Default is 1m. Set to 3s for demonstrative purposes.
-			metric.WithInterval(3*time.Second))),
+		metric.WithReader(metric.NewPeriodicReader(exporter)), // Default is 1m. Set to 3s for demonstrative purposes.
+		//metric.WithInterval(3*time.Second)
+
 	)
 	otel.SetMeterProvider(meterProvider)
-	return metricExporter.Shutdown
+	return meterProvider, err
 }

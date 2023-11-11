@@ -9,6 +9,8 @@ receivers:
         protocols:
             grpc:
             http:
+    filelog:
+        include: [/tmp/*.log]
 #    fluentforward:
 #        endpoint: 0.0.0.0:8006
 exporters:
@@ -21,8 +23,8 @@ exporters:
         tls:
             insecure: true
     logging:
-#        loglevel: "DEBUG"
-        verbosity: detailed
+        loglevel: "DEBUG"
+#        verbosity: detailed
     loki:
         endpoint: http://loki:3100/loki/api/v1/push
         tls:
@@ -61,12 +63,12 @@ service:
         metrics:
             receivers: [ otlp ]
             processors: [ batch ]
-            exporters: [ prometheusremotewrite, prometheus ]
+            exporters: [ prometheusremotewrite ] #prometheus
         traces:
             receivers: [otlp]
             exporters: [logging, otlp]
         logs:
-            receivers: [  otlp ] #fluentforward
+            receivers: [  otlp ] #filelog, fluentforward
             processors: [ attributes, batch ]
             exporters: [ logging, elasticsearch/log ] #loki
     extensions: [ memory_ballast, zpages, health_check ]
