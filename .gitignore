@@ -12,6 +12,12 @@ target/
 .settings
 .springBeans
 .sts4-cache
+*/node_modules
+k8s
+docker/elasticsearch
+docker/tempo-data
+docker/tmp
+frontend
 
 ### IntelliJ IDEA ###
 .idea

@@ -1,0 +1,11 @@
+requests
+itsdangerous==2.0.1
+python-dotenv
+opentelemetry-api
+opentelemetry-sdk
+opentelemetry-instrumentation-confluent-kafka
+opentelemetry-exporter-otlp-proto-grpc
+confluent-kafka
+protobuf
+jsonschema
+fastavro

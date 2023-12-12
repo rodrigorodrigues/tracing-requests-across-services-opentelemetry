@@ -1,0 +1,47 @@
+{
+  "type": "record",
+  "name": "Payment",
+  "namespace": "com.example.schema.avro",
+  "fields": [
+    {
+      "name": "requestId",
+      "type": "string"
+    },
+    {
+      "name": "createdAt",
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-millis"
+      }
+    },
+    {
+      "name": "status",
+      "type": "string"
+    },
+    {
+      "name": "total",
+      "type": {
+        "type": "bytes",
+        "logicalType": "decimal",
+        "scale": 2,
+        "precision": 18
+      }
+    },
+    {
+      "name": "usernameFrom",
+      "type": "string"
+    },
+    {
+      "name": "usernameFromCountry",
+      "type": "string"
+    },
+    {
+      "name": "usernameTo",
+      "type": "string"
+    },
+    {
+      "name": "usernameToCountry",
+      "type": "string"
+    }
+  ]
+}

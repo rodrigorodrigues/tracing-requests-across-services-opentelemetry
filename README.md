@@ -1,14 +1,22 @@
-# Tracing Requests Across Services
+# Tracing Requests Across Services with OpenTelemetry
 
-Small project showing how to trace requests across services(`spring boot and python/flask`) using Prometheus/Zipkin/Kibana.
+POC to trace request across multiple services using [OpenTelemetry](https://opentelemetry.io).
 
-More details look at https://www.linkedin.com/pulse/tracing-requests-across-multiple-services-rodrigo-rodrigues
+![img.png](img.png)
+
+![img_4.png](img_4.png)
+
+![img_3.png](img_3.png)
+
+![img_2.png](img_2.png)
+
+![img_1.png](img_1.png)
+
+More details look at TBC
 
 ### Installation
 
-First run `mvn clean package spring-boot:build-image` to build the docker image.
-
-Then run `docker-compose up`.
+TBC
 
 * [Spring Cloud Sleuth Headers](https://cloud.spring.io/spring-cloud-sleuth/2.0.x/multi/multi__propagation.html)
 * [Spring Boot B3 Propagation Sample](https://github.com/cassiomolin/log-aggregation-spring-boot-elastic-stack)

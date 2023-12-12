@@ -1,0 +1,157 @@
+extensions:
+    memory_ballast:
+        size_mib: 512
+    zpages:
+        endpoint: 0.0.0.0:55679
+    health_check:
+receivers:
+    zipkin:
+    otlp:
+        protocols:
+            grpc:
+            http:
+    filelog:
+        include: [/tmp/*.log]
+    fluentforward:
+        endpoint: 0.0.0.0:8006
+exporters:
+    otlp:
+        endpoint: tempo:4317
+        sending_queue:
+            enabled: false
+        retry_on_failure:
+            enabled: false
+        tls:
+            insecure: true
+    logging:
+        loglevel: "DEBUG"
+#        verbosity: detailed
+    debug:
+        verbosity: detailed
+    loki:
+        endpoint: http://loki:3100/loki/api/v1/push
+        tls:
+            insecure: true
+    elasticsearch/log:
+        endpoints: http://elasticsearch:9200
+        logs_index: openetelemetry_log_index
+
+    prometheusremotewrite:
+        endpoint: http://prometheus:9090/api/prom/push
+        target_info:
+            enabled: false
+        tls:
+            insecure: true
+    prometheus:
+        endpoint: "0.0.0.0:1234"
+#        namespace: test-space
+#        const_labels:
+#            label1: value1
+#            "another label": spaced value
+        send_timestamps: true
+        metric_expiration: 180m
+        enable_open_metrics: true
+        add_metric_suffixes: false
+        resource_to_telemetry_conversion:
+            enabled: true
+processors:
+    batch:
+    transform:
+        error_mode: ignore
+        log_statements:
+            - context: log
+              statements:
+                - set(trace_id.string,attributes["trace_id"])
+                - set(span_id.string,attributes["span_id"])
+    attributes:
+        actions:
+            - action: insert
+              key: loki.attribute.labels
+              value: app_name, trace_id
+#            - action: extract
+#              key: fluent.tag
+#              pattern: serviceName='(?P<service_name>.*)'.*?traceID=(?P<trace_id>\w+).*?spanID=(?P<span_id>.*).*?requestId='(?P<request_id>.*)'
+            - action: extract
+              key: fluent.tag
+              pattern: serviceName='(?P<service_name>.*?)'
+            - action: extract
+              key: fluent.tag
+              pattern: traceID=(?P<trace_id>\w+)
+            - action: extract
+              key: fluent.tag
+              pattern: spanID=(?P<span_id>\w+)
+            - action: extract
+              key: fluent.tag
+              pattern: requestId='(?P<request_id>.*?)'
+            - action: delete
+              key: fluent.tag
+
+    filter/spans:
+#        error_mode: ignore
+#        traces:
+#            span:
+#                - 'attributes["http.target"] == "/actuator/health"'
+#                - 'resource.attributes["host.name"] == "localhost"'
+#                - 'name == "app_3"'
+#            spanevent:
+#                - 'attributes["http.route"] == actuator/.*'
+#                - 'IsMatch(name, ".*grpc.*")'
+        spans:
+            exclude:
+                match_type: regexp
+#                services:
+#                    - auth-service-python
+#                span_names:
+#                    - recv
+                attributes:
+                    - key: http.url
+                      value: /actuator.*
+#                    - key: http.target
+#                      value: /actuator.*
+#                span_names:
+#                    - recv
+#                    - key: name
+#                      value: recv
+#                    - key: service.name
+#                      value: auth-service-python
+#            span:
+#                - 'attributes["http.route"] == "/actuator/health"'
+#                - 'IsMatch(attributes["http.route"], "/actuator/.*")'
+#                - 'attributes["http.url"] == "/actuator/health"'
+#                - 'IsMatch(attributes["http.url"], "/actuator/.*")'
+#            spanevent:
+#                - 'Name == "recv"'
+    filter/spans2:
+        spans:
+            exclude:
+                match_type: regexp
+                span_names:
+                    - recv
+                    - fs.*
+                    - tcp.*
+    filter/logs:
+        error_mode: ignore
+        logs:
+            include:
+                match_type: regexp
+                bodies:
+                    - traceID=(\w+)
+service:
+    pipelines:
+        logs:
+            receivers: [  otlp, fluentforward ] #filelog
+            processors: [ attributes, transform ]
+            exporters: [ debug, elasticsearch/log ]
+        logs/2:
+            receivers: [  otlp, fluentforward ] #filelog
+            processors: [ attributes, filter/logs, transform ]
+            exporters: [debug, loki ]
+        metrics:
+            receivers: [ otlp ]
+            processors: [ batch ]
+            exporters: [ debug, prometheus ] #prometheusremotewrite
+        traces:
+            receivers: [otlp, zipkin]
+            processors: [filter/spans, filter/spans2]
+            exporters: [debug, otlp]
+    extensions: [ memory_ballast, zpages, health_check ]

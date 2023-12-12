@@ -1,0 +1,39 @@
+{
+  "type": "record",
+  "name": "UpdatePayment",
+  "namespace": "com.example.schema.avro",
+  "fields": [
+    {
+      "name": "paymentId",
+      "type": "string"
+    },
+    {
+      "name": "updateAt",
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-millis"
+      }
+    },
+    {
+      "name": "reasonFailed",
+      "type": ["null", "string"]
+    },
+    {
+      "name": "status",
+      "type": {
+        "type": "enum",
+        "name": "CheckStatus",
+        "symbols": [
+          "SANCTION_CHECK",
+          "AUTH_CHECK",
+          "USER_CONFIRMATION_CHECK"
+        ]
+      }
+    },
+    {
+      "name": "checkFailed",
+      "type": "boolean",
+      "default": true
+    }
+  ]
+}

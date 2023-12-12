@@ -1,0 +1,45 @@
+spring:
+  kafka:
+    properties:
+      schema.registry.url: http://localhost:${wiremock.server.port}
+      allow.auto.create.topics: false
+      group-id: payment-service
+    producer:
+      bootstrap-servers: ${spring.embedded.kafka.brokers}
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: io.confluent.kafka.serializers.KafkaAvroSerializer
+    consumer:
+      properties:
+        specific.avro.reader: true
+      bootstrap-servers: ${spring.embedded.kafka.brokers}
+      auto-offset-reset: latest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: io.confluent.kafka.serializers.KafkaAvroDeserializer
+  application:
+    name: payment-service
+  datasource:
+    driver-class-name: org.h2.Driver
+    url: jdbc:h2:mem:demo;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    defer-datasource-initialization: true
+management:
+  tracing:
+    propagation:
+      produce: w3c, b3, b3_multi
+      consume: b3, w3c, b3_multi
+    baggage:
+      remote-fields: requestId
+      correlation:
+        fields: requestId
+logging:
+  pattern:
+    level: "%5p [${spring.application.name:},%X{traceId:-},%X{spanId:-},requestId=%X{requestId:-}]"
+server:
+  error:
+    include-binding-errors: always
+    include-stacktrace: always
+    include-message: always
