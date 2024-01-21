@@ -1,10 +1,10 @@
 requests
-itsdangerous==2.0.1
 python-dotenv
 opentelemetry-api
 opentelemetry-sdk
-opentelemetry-instrumentation-confluent-kafka
+opentelemetry-instrumentation-confluent-kafka==0.40b0
 opentelemetry-exporter-otlp-proto-grpc
+opentelemetry-instrumentation==0.41b0
 confluent-kafka
 protobuf
 jsonschema

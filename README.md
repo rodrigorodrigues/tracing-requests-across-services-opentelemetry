@@ -27,3 +27,4 @@ TBC
 * [Grafana OpenTelemetry Spring Boot Support](https://grafana.com/docs/opentelemetry/instrumentation/java/spring-starter/)
 * [Spring Boot 3 Tracing](https://github.com/micrometer-metrics/tracing/wiki/Spring-Cloud-Sleuth-3.1-Migration-Guide)
 * [Python OpenTelemetry Trace](https://newrelic.com/blog/how-to-relic/opentelemetry-full-stack-javascript)
+* [Spring Webflux Tracing](https://stackoverflow.com/a/77707351/2669657)

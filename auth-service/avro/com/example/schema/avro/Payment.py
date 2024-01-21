@@ -45,7 +45,7 @@ class Payment(object):
                 "type": "string"
             },
             {
-                "name": "usernameFromCountry",
+                "name": "usernameFromAddress",
                 "type": "string"
             },
             {
@@ -53,7 +53,7 @@ class Payment(object):
                 "type": "string"
             },
             {
-                "name": "usernameToCountry",
+                "name": "usernameToAddress",
                 "type": "string"
             }
         ]
@@ -82,11 +82,11 @@ class Payment(object):
 
         self.set_usernameFrom(obj.get('usernameFrom', None))
 
-        self.set_usernameFromCountry(obj.get('usernameFromCountry', None))
+        self.set_usernameFromAddress(obj.get('usernameFromAddress', None))
 
         self.set_usernameTo(obj.get('usernameTo', None))
 
-        self.set_usernameToCountry(obj.get('usernameToCountry', None))
+        self.set_usernameToAddress(obj.get('usernameToAddress', None))
 
     def dict(self):
         return todict(self, classkey=Payment)
@@ -146,16 +146,16 @@ class Payment(object):
 
         return self.usernameFrom
 
-    def set_usernameFromCountry(self, value: str) -> None:
+    def set_usernameFromAddress(self, value: str) -> None:
 
         if isinstance(value, str):
-            self.usernameFromCountry = value
+            self.usernameFromAddress = value
         else:
-            raise TypeError("field 'usernameFromCountry' should be type str")
+            raise TypeError("field 'usernameFromAddress' should be type str")
 
-    def get_usernameFromCountry(self) -> str:
+    def get_usernameFromAddress(self) -> str:
 
-        return self.usernameFromCountry
+        return self.usernameFromAddress
 
     def set_usernameTo(self, value: str) -> None:
 
@@ -168,16 +168,16 @@ class Payment(object):
 
         return self.usernameTo
 
-    def set_usernameToCountry(self, value: str) -> None:
+    def set_usernameToAddress(self, value: str) -> None:
 
         if isinstance(value, str):
-            self.usernameToCountry = value
+            self.usernameToAddress = value
         else:
-            raise TypeError("field 'usernameToCountry' should be type str")
+            raise TypeError("field 'usernameToAddress' should be type str")
 
-    def get_usernameToCountry(self) -> str:
+    def get_usernameToAddress(self) -> str:
 
-        return self.usernameToCountry
+        return self.usernameToAddress
 
     def serialize(self) -> None:
         return json.dumps(self, default=default_json_serialize)

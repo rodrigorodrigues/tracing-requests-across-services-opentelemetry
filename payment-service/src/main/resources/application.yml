@@ -1,8 +1,19 @@
 spring:
   application:
-    name: payment-service
+    name: payment-service-spring-boot
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${CLIENT_ID}
+            client-secret: ${CLIENT_SECRET}
+
   jackson:
     default-property-inclusion: non_empty
+    serialization:
+      write-bigdecimal-as-plain: true
+      write-dates-as-timestamps: false
   kafka:
     consumer:
       properties:
@@ -14,13 +25,13 @@ spring:
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: io.confluent.kafka.serializers.KafkaAvroDeserializer
     properties:
-      bootstrap-servers: ${KAFKA_URL:localhost:9092}
       schema.registry.url: ${SCHEMA_REGISTRY_URL:http://localhost:8081}
       allow.auto.create.topics: true
       specific.avro.reader: true
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: io.confluent.kafka.serializers.KafkaAvroSerializer
+    bootstrap-servers: ${KAFKA_URL:localhost:9092}
 
 management:
   endpoints:
@@ -51,6 +62,9 @@ management:
     distribution:
       percentiles-histogram:
         http.server.requests: true
+  zipkin:
+    tracing:
+      endpoint: ${ZIPKIN_ENDPOINT:http://localhost:9411}/api/v2/spans
 logging:
   pattern:
     level: "%5p [serviceName='${spring.application.name:}-spring-boot',traceID=%X{traceId:-},spanID=%X{spanId:-},requestId='%X{requestId:-}']"
@@ -60,6 +74,7 @@ server:
     include-binding-errors: always
     include-stacktrace: always
     include-message: always
+
 ---
 spring:
   config:

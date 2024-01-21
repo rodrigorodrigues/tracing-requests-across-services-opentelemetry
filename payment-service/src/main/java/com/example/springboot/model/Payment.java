@@ -1,35 +1,33 @@
-package com.example.springboot;
+package com.example.springboot.model;
 
-import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.relational.core.mapping.Table;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Objects;
 
-@Entity
-@Table(name = "tb_payment")
+@Table("payment")
 public class Payment {
     @Id
+    private Long id;
+
     @NotBlank
-    private String paymentId;
+    private String requestId;
 
     @NotNull
     private BigDecimal total;
 
-    @NotNull
-    @ManyToOne
-    @JoinColumn(name = "usernameFrom")
-    private User usernameFrom;
+    @NotBlank
+    private String usernameFrom;
 
     @NotNull
-    @ManyToOne
-    @JoinColumn(name = "usernameTo")
-    private User usernameTo;
+    @NotBlank
+    private String usernameTo;
 
     @NotNull
-    @Enumerated(EnumType.STRING)
     private PaymentStatus status;
 
     @NotNull
@@ -43,18 +41,26 @@ public class Payment {
 
     private boolean userConfirmationCheckProcessed;
 
-    private String reasonFailed;
+    private String message;
 
-    public Payment() {
+    public Payment() {}
+
+    public Payment(Long id, RequestPaymentDto requestPaymentDto, String usernameFrom) {
+        this.id = id;
+        this.requestId = requestPaymentDto.requestId();
+        this.total = requestPaymentDto.total();
+        this.usernameFrom = usernameFrom;
+        this.usernameTo = requestPaymentDto.usernameTo();
+        this.status = (id != null ? PaymentStatus.REPROCESSING : PaymentStatus.PROCESSING);
+        this.createdAt = Instant.now();
     }
 
-    public Payment(PaymentDto paymentDto, User usernameFrom, User usernameTo) {
-        this.paymentId = paymentDto.requestId();
-        this.total = paymentDto.total();
-        this.usernameFrom = usernameFrom;
-        this.usernameTo = usernameTo;
-        this.status = PaymentStatus.PROCESSING;
-        this.createdAt = (paymentDto.createdAt() != null ? paymentDto.createdAt() : Instant.now());
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public Long getId() {
+        return id;
     }
 
     public Instant getCreatedAt() {
@@ -101,26 +107,12 @@ public class Payment {
         return isAuthCheckProcessed() && isSanctionCheckProcessed() && isUserConfirmationCheckProcessed();
     }
 
-    public void processPayment(Payment payment) {
-        User usernameFrom = payment.getUsernameFrom();
-        User usernameTo = payment.getUsernameTo();
-        BigDecimal total = payment.getTotal();
-        if (total.doubleValue() > usernameFrom.getBalance().doubleValue()) {
-            payment.setStatus(PaymentStatus.INSUFFICIENT_RESOURCES);
-            payment.setReasonFailed("User not has insufficient resources");
-        } else {
-            usernameTo.setBalance(usernameTo.getBalance().add(total));
-            usernameFrom.setBalance(usernameFrom.getBalance().subtract(total));
-            payment.setStatus(PaymentStatus.COMPLETED);
-        }
+    public String getMessage() {
+        return message;
     }
 
-    public String getReasonFailed() {
-        return reasonFailed;
-    }
-
-    public void setReasonFailed(String reasonFailed) {
-        this.reasonFailed = reasonFailed;
+    public void setMessage(String message) {
+        this.message = message;
     }
 
     public PaymentStatus getStatus() {
@@ -131,12 +123,12 @@ public class Payment {
         this.status = status;
     }
 
-    public String getPaymentId() {
-        return paymentId;
+    public String getRequestId() {
+        return requestId;
     }
 
-    public void setPaymentId(String paymentId) {
-        this.paymentId = paymentId;
+    public void setRequestId(String requestId) {
+        this.requestId = requestId;
     }
 
     public BigDecimal getTotal() {
@@ -147,19 +139,19 @@ public class Payment {
         this.total = total;
     }
 
-    public User getUsernameFrom() {
+    public String getUsernameFrom() {
         return usernameFrom;
     }
 
-    public void setUsernameFrom(User usernameFrom) {
+    public void setUsernameFrom(String usernameFrom) {
         this.usernameFrom = usernameFrom;
     }
 
-    public User getUsernameTo() {
+    public String getUsernameTo() {
         return usernameTo;
     }
 
-    public void setUsernameTo(User usernameTo) {
+    public void setUsernameTo(String usernameTo) {
         this.usernameTo = usernameTo;
     }
 
@@ -168,18 +160,30 @@ public class Payment {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Payment payment = (Payment) o;
-        return sanctionCheckProcessed == payment.sanctionCheckProcessed && authCheckProcessed == payment.authCheckProcessed && userConfirmationCheckProcessed == payment.userConfirmationCheckProcessed && Objects.equals(paymentId, payment.paymentId) && Objects.equals(total, payment.total) && Objects.equals(usernameFrom, payment.usernameFrom) && Objects.equals(usernameTo, payment.usernameTo) && status == payment.status && Objects.equals(createdAt, payment.createdAt) && Objects.equals(processedAt, payment.processedAt) && Objects.equals(reasonFailed, payment.reasonFailed);
+        return sanctionCheckProcessed == payment.sanctionCheckProcessed &&
+                authCheckProcessed == payment.authCheckProcessed &&
+                userConfirmationCheckProcessed == payment.userConfirmationCheckProcessed &&
+                Objects.equals(id, payment.id) &&
+                Objects.equals(requestId, payment.requestId) &&
+                Objects.equals(total, payment.total) &&
+                Objects.equals(usernameFrom, payment.usernameFrom) &&
+                Objects.equals(usernameTo, payment.usernameTo) &&
+                status == payment.status &&
+                Objects.equals(createdAt, payment.createdAt) &&
+                Objects.equals(processedAt, payment.processedAt) &&
+                Objects.equals(message, payment.message);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(paymentId, total, usernameFrom, usernameTo, status, createdAt, processedAt, sanctionCheckProcessed, authCheckProcessed, userConfirmationCheckProcessed, reasonFailed);
+        return Objects.hash(id, requestId, total, usernameFrom, usernameTo, status, createdAt, processedAt, sanctionCheckProcessed, authCheckProcessed, userConfirmationCheckProcessed, message);
     }
 
     @Override
     public String toString() {
         return "Payment{" +
-                "paymentId='" + paymentId + '\'' +
+                "requestId='" + requestId + '\'' +
+                ", id=" + id +
                 ", total=" + total +
                 ", usernameFrom=" + usernameFrom +
                 ", usernameTo=" + usernameTo +
@@ -189,7 +193,7 @@ public class Payment {
                 ", sanctionCheckProcessed=" + sanctionCheckProcessed +
                 ", authCheckProcessed=" + authCheckProcessed +
                 ", userConfirmationCheckProcessed=" + userConfirmationCheckProcessed +
-                ", reasonFailed='" + reasonFailed + '\'' +
+                ", message='" + message + '\'' +
                 '}';
     }
 }

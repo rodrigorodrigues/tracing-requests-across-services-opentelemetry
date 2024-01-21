@@ -32,7 +32,7 @@
       "type": "string"
     },
     {
-      "name": "usernameFromCountry",
+      "name": "usernameFromAddress",
       "type": "string"
     },
     {
@@ -40,7 +40,7 @@
       "type": "string"
     },
     {
-      "name": "usernameToCountry",
+      "name": "usernameToAddress",
       "type": "string"
     }
   ]

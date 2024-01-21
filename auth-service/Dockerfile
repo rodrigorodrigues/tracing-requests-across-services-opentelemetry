@@ -1,8 +1,4 @@
-FROM python:3.7
-
-ARG PORT
-
-EXPOSE $PORT
+FROM python:3.9
 
 COPY . /app
 

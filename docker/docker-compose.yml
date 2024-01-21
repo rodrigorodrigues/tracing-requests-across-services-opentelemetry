@@ -16,20 +16,6 @@ services:
         aliases:
           - prometheus
 
-#  promtail:
-#    image: grafana/promtail:2.9.0
-#    container_name: promtail
-#    volumes:
-##      - /var/log:/var/log
-#      - /tmp/payment-service.log:/tmp/payment-service.log
-#      - /tmp/simple-flask-python-server.log:/tmp/simple-flask-python-server.log
-#      - ./promtail-config.yaml:/etc/promtail/config.yml
-#    command: -config.file=/etc/promtail/config.yml
-#    networks:
-#      net:
-#        aliases:
-#          - promtail
-
   tempo:
     image: grafana/tempo:latest
     container_name: tempo
@@ -66,7 +52,11 @@ services:
       - PORT=8006
       - LOG_PATH=/tmp/*.log
       - FLB_LOG_LEVEL=trace
+    ports:
+      - "24224:24224"
+      - "24224:24224/udp"
     volumes:
+      - /tmp/payment-service-spring-boot.log:/tmp/payment-service-spring-boot.log
       - /tmp/payment-service.log:/tmp/payment-service.log
 #      - /tmp/simple-flask-python-server.log:/tmp/simple-flask-python-server.log
       - /tmp/golang-kafka-consumer.log:/tmp/golang-kafka-consumer.log
@@ -77,57 +67,13 @@ services:
       net:
         aliases:
           - fluent-bit
-#  grafana-fluent-bit-plugin:
-#    image: grafana/fluent-bit-plugin-loki:latest
-#    container_name: grafana-fluent-bit-plugin
-#    environment:
-#      - LOKI_URL=http://loki:3100/loki/api/v1/push
-#      - LOG_PATH=/tmp/*.log
-#      - FLB_LOG_LEVEL=trace
-#    volumes:
-#      - /tmp/payment-service.log:/tmp/payment-service.log
-#      - /tmp/simple-flask-python-server.log:/tmp/simple-flask-python-server.log
-##      - ./fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf
-#    ports:
-#      - "24224:24224"
-#      - "24224:24224/udp"
-#    networks:
-#      net:
-#        aliases:
-#          - fluent-bit
 
- #otel-official
-#  otel-collector:
-#    image: otel/opentelemetry-collector:latest
-#    container_name: otel-collector
-#    command: [ "--config=/etc/otel-collector-config.yaml" ]
-#    volumes:
-#      - /var/log:/var/log
-#      - ./otelcol-config.yaml:/etc/otel-collector-config.yaml
-#    ports:
-#      - "1888:1888"   # pprof extension
-#      - "13133:13133" # health_check extension
-#      - "4317:4317"   # OTLP gRPC receiver
-#      - "4318:4318"   # OTLP http receiver
-#      - "55679:55679" # zpages extension
-#    networks:
-#      net:
-#        aliases:
-#          - otel
- #otel-contrib
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.88.0
     container_name: otel-collector
     command: [ "--config=/etc/otel-collector-config.yaml" ]
     volumes:
-#      - /var/log:/var/log
       - ./otelcol-config.yaml:/etc/otel-collector-config.yaml
-#      - /tmp/payment-service.log:/tmp/payment-service.log
-#      - /tmp/simple-flask-python-server.log:/tmp/simple-flask-python-server.log
-#      - /tmp/golang-kafka-consumer.log:/tmp/golang-kafka-consumer.log
-#      - /tmp/nodejs-express-server.log:/tmp/nodejs-express-server.log
-#    depends_on:
-#      - zipkin
     ports:
       - "1888:1888"   # pprof extension
       - "13133:13133" # health_check extension
@@ -140,22 +86,6 @@ services:
       net:
         aliases:
           - otel
-
-#  nginx:
-#    image: nginx:latest
-#    container_name: nginx
-#    hostname: nginx
-#    volumes:
-#      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-#    depends_on:
-#      - spr
-#      - api02
-#    ports:
-#      - "80:80"
-#    networks:
-#      net:
-#        aliases:
-#          - nginx
 
   grafana:
     environment:
@@ -172,18 +102,8 @@ services:
         aliases:
           - grafana
 
-#  zipkin:
-#    image: openzipkin/zipkin
-#    container_name: zipkin
-#    ports:
-#      - "9411:9411"
-#    networks:
-#      net:
-#        aliases:
-#          - zipkin
-
   elasticsearch:
-    image: elasticsearch:7.17.13 #8.10.2 #7.14.1
+    image: elasticsearch:7.17.13
     container_name: elasticsearch
     ports:
       - "9200:9200"
@@ -196,24 +116,8 @@ services:
         aliases:
           - elastic
 
-#  logstash:
-#    image: logstash:7.17.13 #8.10.2 #7.14.1
-#    container_name: logstash
-#    ports:
-#      - "5000:5000"
-#      - "5044:5044"
-#      - "9600:9600"
-#    volumes:
-#      - ./logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro                # Pipeline configuration
-#    depends_on:
-#      - elasticsearch
-#    networks:
-#      net:
-#        aliases:
-#          - logstash
-
   kibana:
-    image: kibana:7.17.13 #8.10.2 #7.14.1
+    image: kibana:7.17.13
     container_name: kibana
     ports:
       - "5601:5601"
@@ -286,68 +190,94 @@ services:
         aliases:
           - postgres
 
-  payment-service:
-    image: payment-service:0.0.1-SNAPSHOT
-    container_name: payment-service
+  redis:
+    image: redis:alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    networks:
+      net:
+        aliases:
+          - redis
+
+  payment-service-spring-boot:
+    image: payment-service-spring-boot:0.0.1-SNAPSHOT
+    container_name: payment-service-spring-boot
     environment:
-      - ADDRESS_SERVICE_URL=http://python-service:8090
+      - KAFKA_URL=kafka:9092
       - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - SCHEMA_REGISTRY_URL=http://schema-registry:8081
       - SERVER_PORT=8080
       - OTLP_URL=http://otel-collector:4318
+      - SPRING_PROFILES_ACTIVE=logfile
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/postgres
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=changeme
+      - MANAGEMENT_ZIPKIN_TRACING_ENDPOINT=http://otel-collector:9411/api/v2/spans
     depends_on:
       - otel-collector
+      - kafka
+      - schema-registry
+      - postgres
     ports:
       - "8080:8080"
     networks:
       net:
         aliases:
-          - payment-service
+          - payment-service-spring-boot
 
-  python-service:
+  sanction-service-golang:
     build:
       args:
-        - PORT=8091
-      context: ./simple-flask-python-server
-      dockerfile: Dockerfile
-    container_name: python-service
-    depends_on:
-      - otel-collector
-    ports:
-      - "8090:8090"
-    networks:
-      net:
-        aliases:
-          - python-service
-
-  golang-service:
-    build:
-      args:
-        - PORT=8082
         - ENV=docker
-      context: ./golang-kafka-consumer
+      context: ../sanction-service
       dockerfile: Dockerfile
-    container_name: golang-service
-    ports:
-      - 8082:8082
-    networks:
-      net:
-        aliases:
-          - golang-service
-
-  nodejs-service:
-    build:
-      context: ./nodejs-express-server
-      dockerfile: Dockerfile
-    container_name: nodejs-service
+    container_name: sanction-service-golang
+    depends_on:
+      - fluent-bit
     environment:
-      - PORT=8083
-      - OTLP_URL=http://otel-collector:4317
-    ports:
-      - 8083:8083
+      - SET_LOG_FILE=False
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: localhost:24224
+        tag: sanction-service-golang
     networks:
       net:
         aliases:
-          - nodejs-service
+          - sanction-service-golang
+
+  user-service-nodejs:
+    build:
+      context: ../user-service
+      dockerfile: Dockerfile
+    container_name: user-service-nodejs
+    networks:
+      net:
+        aliases:
+          - user-service-nodejs
+
+  auth-service-python:
+    build:
+      context: ../auth-service
+      dockerfile: Dockerfile
+    container_name: auth-service-python
+    depends_on:
+      - fluent-bit
+    environment:
+      - SET_LOG_FILE=False
+    volumes:
+      - ../payment-service/src/main/resources/avro/payment-schema.avsc:/tmp/payment-schema.avsc
+      - ../payment-service/src/main/resources/avro/update-payment-schema.avsc:/tmp/update-payment-schema.avsc
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: localhost:24224
+        tag: auth-service-python
+    networks:
+      net:
+        aliases:
+          - auth-service-python
 
 networks:
   net:

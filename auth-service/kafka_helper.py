@@ -1,6 +1,8 @@
 import datetime
 import json
 import logging
+from random import randint
+from time import sleep
 from uuid import uuid4
 
 from confluent_kafka import Consumer, Producer
@@ -82,11 +84,20 @@ def process_messages(payment_schema, update_payment_schema, bootstrap_servers, g
 
             logging.info(f",traceID={trace_id}\tPayment record: {todict(payment_record)}\n")
 
+            sleep(randint(10, 20)) #Simulating a long process
+
+            check_failed = False
+            reason_failed = ""
+            if payment_record.get_total() >= 10000:
+                check_failed = True
+                reason_failed = "Cannot make a payment greater than or equal to 10000"
+
             update_payment = UpdatePayment({
-                "paymentId": payment_record.get_requestId(),
+                "requestId": payment_record.get_requestId(),
                 "updateAt": datetime.datetime.now(),
-                "reasonFailed": "Invalid details provided",
-                "status": CheckStatus.AUTH_CHECK
+                "reasonFailed": reason_failed,
+                "status": CheckStatus.AUTH_CHECK,
+                "checkFailed": check_failed
             })
 
             logging.info(f"update_payment: {todict(update_payment)}")

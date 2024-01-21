@@ -1,29 +1,26 @@
-FROM golang:1.21.2-alpine3.18
-
-ARG PORT
+FROM --platform=linux/amd64 golang:1.21.2-alpine3.18
 
 ARG ENV
 
-RUN mkdir /app
+ENV ENVIRONMENT=$ENV
 
-ADD . /app
+RUN apk update && apk add gcc g++ libc-dev librdkafka-dev pkgconf musl-dev
 
 WORKDIR /app
 
-COPY go.mod .
+# Download Go modules
+COPY go.mod go.sum ./
 
-## Add this go mod download command to pull in any dependencies
-RUN go mod download
+RUN go mod download && go mod verify
 
 COPY . .
 
-## Our project will now successfully build with the necessary go libraries included.
-RUN go build -o main
+ENV GOOS=linux
 
-ENV ENVIRONMENT=$ENV
+ENV GOARCH=amd64
 
-EXPOSE $PORT
+ENV CGO_ENABLED=1
 
-## Our start command which kicks off
-## our newly created binary executable
+RUN go build -tags musl --ldflags "-extldflags -static" -o main .
+
 CMD ["/app/main"]

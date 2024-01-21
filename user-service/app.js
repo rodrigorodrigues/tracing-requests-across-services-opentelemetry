@@ -27,14 +27,16 @@ const logger = winston.createLogger({
 const KafkaAvro = require('kafkajs-avro').KafkaAvro;
 
 (async () => {
-    const kafka = new KafkaAvro({
+    let config = {
         clientId: "test",
         brokers: [`${process.env.BOOSTRAP_SERVERS || 'localhost:9092'}`],
         logLevel: 'TRACE',
         avro: {
             url: `${process.env.SCHEMA_REGISTRY_URL || 'http://localhost:8081'}`
         }
-    })
+    };
+    const kafka = new KafkaAvro(config)
+    logger.log("info", `kafkaConfigConsumer: ${JSON.stringify(config)}`);
 
     /* Consumer
        The consumer does not require any extra settings to be built.
@@ -86,12 +88,20 @@ const KafkaAvro = require('kafkajs-avro').KafkaAvro;
 
             logger.log("info", `traceID=${message.headers['X-B3-TraceId']}\tspanID=${message.headers['X-B3-SpanId']}\tPayment record: ${JSON.stringify(message.value)}`);
 
+            let checkFailed = false;
+            let reasonFailed = null;
+
+            if (message.value.usernameFrom === message.value.usernameTo) {
+                checkFailed = true;
+                reasonFailed = "Invalid Check- Cannot make a payment for yourself!";
+            }
+
             let updatePayment = {
-                reasonFailed: "Invalid Check",
-                paymentId: message.value.requestId,
+                reasonFailed: reasonFailed,
+                requestId: message.value.requestId,
                 status: "USER_CONFIRMATION_CHECK",
                 updateAt: Date.now(),
-                checkFailed: true
+                checkFailed: checkFailed
             };
 
             logger.log("info", `Updating payment: ${JSON.stringify(updatePayment)}`);
@@ -117,26 +127,3 @@ const KafkaAvro = require('kafkajs-avro').KafkaAvro;
         }
     })
 })()
-
-
-
-
-/*app.post('/v1/errors', (req, res) => {
-    propagator.extract(
-        trace.setSpanContext(ROOT_CONTEXT, parentSpan.spanContext()),
-        carrier,
-        defaultTextMapGetter
-    );
-    logger.log("info", `carrier: ${carrier}`); // transport this carrier info to other service via headers or some other
-
-    const parentCtx = propagator.extract(ROOT_CONTEXT, carrier, defaultTextMapGetter);
-    logger.log("info", `parentCtx: ${parentCtx}`); // transport this carrier info to other service via headers or some other
-
-    logger.log("info", `Receiving message with headers: ${JSON.stringify(req.headers)}`)
-    res.send("Processing errors in nodejs express...");
-});
-
-app.listen(PORT, () => {
-    console.log(`Listening for requests on http://localhost:${PORT}`);
-});
-*/

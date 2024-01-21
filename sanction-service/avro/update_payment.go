@@ -18,7 +18,7 @@ import (
 var _ = fmt.Printf
 
 type UpdatePayment struct {
-	PaymentId string `json:"paymentId"`
+	RequestId string `json:"requestId"`
 
 	UpdateAt int64 `json:"updateAt"`
 
@@ -62,7 +62,7 @@ func DeserializeUpdatePaymentFromSchema(r io.Reader, schema string) (UpdatePayme
 
 func writeUpdatePayment(r UpdatePayment, w io.Writer) error {
 	var err error
-	err = vm.WriteString(r.PaymentId, w)
+	err = vm.WriteString(r.RequestId, w)
 	if err != nil {
 		return err
 	}
@@ -90,7 +90,7 @@ func (r UpdatePayment) Serialize(w io.Writer) error {
 }
 
 func (r UpdatePayment) Schema() string {
-	return "{\"fields\":[{\"name\":\"paymentId\",\"type\":\"string\"},{\"name\":\"updateAt\",\"type\":{\"logicalType\":\"timestamp-millis\",\"type\":\"long\"}},{\"name\":\"reasonFailed\",\"type\":[\"null\",\"string\"]},{\"name\":\"status\",\"type\":{\"name\":\"CheckStatus\",\"symbols\":[\"SANCTION_CHECK\",\"AUTH_CHECK\",\"USER_CONFIRMATION_CHECK\"],\"type\":\"enum\"}},{\"default\":true,\"name\":\"checkFailed\",\"type\":\"boolean\"}],\"name\":\"com.example.schema.avro.UpdatePayment\",\"type\":\"record\"}"
+	return "{\"fields\":[{\"name\":\"requestId\",\"type\":\"string\"},{\"name\":\"updateAt\",\"type\":{\"logicalType\":\"timestamp-millis\",\"type\":\"long\"}},{\"name\":\"reasonFailed\",\"type\":[\"null\",\"string\"]},{\"name\":\"status\",\"type\":{\"name\":\"CheckStatus\",\"symbols\":[\"SANCTION_CHECK\",\"AUTH_CHECK\",\"USER_CONFIRMATION_CHECK\"],\"type\":\"enum\"}},{\"default\":true,\"name\":\"checkFailed\",\"type\":\"boolean\"}],\"name\":\"com.example.schema.avro.UpdatePayment\",\"type\":\"record\"}"
 }
 
 func (r UpdatePayment) SchemaName() string {
@@ -109,7 +109,7 @@ func (_ UpdatePayment) SetUnionElem(v int64) { panic("Unsupported operation") }
 func (r *UpdatePayment) Get(i int) types.Field {
 	switch i {
 	case 0:
-		w := types.String{Target: &r.PaymentId}
+		w := types.String{Target: &r.RequestId}
 
 		return w
 
@@ -166,7 +166,7 @@ func (_ UpdatePayment) AvroCRC64Fingerprint() []byte {
 func (r UpdatePayment) MarshalJSON() ([]byte, error) {
 	var err error
 	output := make(map[string]json.RawMessage)
-	output["paymentId"], err = json.Marshal(r.PaymentId)
+	output["requestId"], err = json.Marshal(r.RequestId)
 	if err != nil {
 		return nil, err
 	}
@@ -197,18 +197,18 @@ func (r *UpdatePayment) UnmarshalJSON(data []byte) error {
 
 	var val json.RawMessage
 	val = func() json.RawMessage {
-		if v, ok := fields["paymentId"]; ok {
+		if v, ok := fields["requestId"]; ok {
 			return v
 		}
 		return nil
 	}()
 
 	if val != nil {
-		if err := json.Unmarshal([]byte(val), &r.PaymentId); err != nil {
+		if err := json.Unmarshal([]byte(val), &r.RequestId); err != nil {
 			return err
 		}
 	} else {
-		return fmt.Errorf("no value specified for paymentId")
+		return fmt.Errorf("no value specified for requestId")
 	}
 	val = func() json.RawMessage {
 		if v, ok := fields["updateAt"]; ok {

@@ -54,6 +54,11 @@ func GetEnv(key string) string {
 	return value
 }
 
+func GetEnvAsArray(key string) []string {
+	str := GetEnv(key)
+	return strings.Split(str, ",")
+}
+
 func GetEnvAsBool(key string) bool {
 	value, err := strconv.ParseBool(GetEnv(key))
 	if err != nil {
@@ -95,7 +100,7 @@ func main() {
 	log.SetFormatter(new(MyFormatter))
 	//log.SetFormatter(formatter)
 	if GetEnvAsBool("SET_LOG_FILE") {
-		// Open a file if it exist or create one if file does not exist
+		// Open a file if it exists or create one if file does not exist
 		file, err := os.OpenFile(GetEnv("LOG_FILE"), os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
 		if err != nil {
 			panic(err)
@@ -107,13 +112,16 @@ func main() {
 	ctx := context.Background()
 
 	serviceName := GetEnv("SERVICE_NAME")
-	otlpUrl := GetEnv("OTEL_EXPORTER_OTLP_ENDPOINT") //"http://localhost:9411/api/v2/spans"
+	otlpUrl := GetEnv("OTEL_EXPORTER_OTLP_ENDPOINT")
 
 	bootstrapServers := GetEnv("KAFKA_BOOTSTRAP_SERVERS")
 	group := GetEnv("KAFKA_GROUP")
-	topics := GetEnv("KAFKA_TOPIC")
+	paymentTopic := GetEnv("KAFKA_TOPIC")
+	updatePaymentTopic := GetEnv("UPDATE_KAFKA_TOPIC")
+	schemaRegistryUrl := GetEnv("SCHEMA_REGISTRY_URL")
+	sanctionNames := GetEnvAsArray("SANCTION_NAMES")
 
 	log.Info("Starting to reading Kafka message")
 
-	ProcessMessages(bootstrapServers, topics, group, GetEnv("NODEJS_EXPRESS_SERVER_URL"), "http://localhost:8081", ctx, serviceName, otlpUrl, log)
+	ProcessMessages(bootstrapServers, paymentTopic, updatePaymentTopic, group, schemaRegistryUrl, ctx, serviceName, otlpUrl, log, sanctionNames)
 }

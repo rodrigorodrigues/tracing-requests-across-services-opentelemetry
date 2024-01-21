@@ -2,7 +2,7 @@ import logging.config
 import os
 import sys
 
-from dotenv import dotenv_values
+from dotenv import dotenv_values, load_dotenv
 
 from kafka_helper import process_messages
 from instrumentation import instrument_log
@@ -10,6 +10,7 @@ from instrumentation import instrument_log
 if not os.getenv('ENV_FILE_LOCATION'):
     os.environ["ENV_FILE_LOCATION"] = ".env"
 config = dotenv_values(os.environ["ENV_FILE_LOCATION"])
+load_dotenv(override=True)
 
 log = logging.getLogger(__name__)
 if config['SET_LOG_FILE']:

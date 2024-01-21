@@ -17,7 +17,7 @@ class UpdatePayment(object):
         "namespace": "com.example.schema.avro",
         "fields": [
             {
-                "name": "paymentId",
+                "name": "requestId",
                 "type": "string"
             },
             {
@@ -68,7 +68,7 @@ class UpdatePayment(object):
                 f"{type(obj)} is not in ('str', 'dict', 'UpdatePayment')"
             )
 
-        self.set_paymentId(obj.get('paymentId', None))
+        self.set_requestId(obj.get('requestId', None))
 
         self.set_updateAt(obj.get('updateAt', None))
 
@@ -81,16 +81,16 @@ class UpdatePayment(object):
     def dict(self):
         return todict(self)
 
-    def set_paymentId(self, value: str) -> None:
+    def set_requestId(self, value: str) -> None:
 
         if isinstance(value, str):
-            self.paymentId = value
+            self.requestId = value
         else:
-            raise TypeError("field 'paymentId' should be type str")
+            raise TypeError("field 'requestId' should be type str")
 
-    def get_paymentId(self) -> str:
+    def get_requestId(self) -> str:
 
-        return self.paymentId
+        return self.requestId
 
     def set_updateAt(self, value: datetime) -> None:
 

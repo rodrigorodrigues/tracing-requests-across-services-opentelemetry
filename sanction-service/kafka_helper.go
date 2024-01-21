@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
@@ -17,15 +16,17 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	avro2 "golang-kafka-consumer/avro"
 	"math/rand"
-	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 )
 
-func ProcessMessages(kafkaAddress string, topic string, group string, apiClientErrorUrl string, schemaRegistryUrl string,
-	ctx context.Context, serviceName string, otlpUrl string, log *logrus.Logger) {
+func ProcessMessages(kafkaAddress string, topic string, updateTopic string,
+	group string, schemaRegistryUrl string,
+	ctx context.Context, serviceName string, otlpUrl string, log *logrus.Logger,
+	sanctionNames []string) {
 	traceProvider, err := InitTraceProvider(serviceName, otlpUrl)
 
 	if err != nil {
@@ -112,7 +113,6 @@ func ProcessMessages(kafkaAddress string, topic string, group string, apiClientE
 	err = consumer.SubscribeTopics([]string{topic}, nil)
 
 	run := true
-	updateTopic := "update-payment-topic"
 
 loop:
 	for run {
@@ -132,9 +132,7 @@ loop:
 			switch e := ev.(type) {
 			case *kafka.Message:
 				start := time.Now()
-				//tr := otel.GetTracerProvider().Tracer("sanction-service-golang-trace")
 				tr := traceProvider.Tracer("sanction-service-golang-console-trace")
-				//log.Info("consoleTracerProvider: %s\n", trConsole)
 
 				// Extract tracing info from message
 				headers := make(map[string]string)
@@ -150,7 +148,7 @@ loop:
 				ctx := otel.GetTextMapPropagator().Extract(background, carrier)
 				traceID, spanID, requestId, err := parseHeaders(headers)
 				if err != nil {
-					sendErrorMessage(e, err.Error(), apiClientErrorUrl, log)
+					log.Fatalln(fmt.Fprintf(os.Stderr, "%% Error: %v", err.Error()))
 					break loop
 				}
 
@@ -165,16 +163,23 @@ loop:
 				err = deser.DeserializeInto(*e.TopicPartition.Topic, e.Value, &value)
 				if err != nil {
 					log.Infof("Failed to deserialize payload: %s", err)
-					sendErrorMessage(e, err.Error(), apiClientErrorUrl, log)
 				} else {
 					log.Infof("Printing all headers: %v", e.Headers)
 					log.Infof(",traceID=%v,spanID=%v,requestId='%v',\tPayment record: %v", traceID.String(), spanID.String(), requestId, value)
-					//Simulate Sanction logic
-					r := rand.Intn(5)
-					time.Sleep(time.Duration(r) * time.Second)
-					updatePayment := avro2.UpdatePayment{PaymentId: value.RequestId,
-						CheckFailed: false,
-						Status:      avro2.CheckStatusSANCTION_CHECK,
+					checkFailed := sanctionNameCheckFailed(sanctionNames, value)
+					reasonFailed := avro2.UnionNullString{
+						Null:      nil,
+						String:    "",
+						UnionType: 1,
+					}
+					if checkFailed {
+						reasonFailed.String = "Sanction Check has Failed"
+					}
+					updatePayment := avro2.UpdatePayment{
+						RequestId:    value.RequestId,
+						CheckFailed:  checkFailed,
+						Status:       avro2.CheckStatusSANCTION_CHECK,
+						ReasonFailed: &reasonFailed,
 					}
 
 					payload, err := ser.Serialize(updateTopic, &updatePayment)
@@ -212,8 +217,6 @@ loop:
 				// informational, the client will try to
 				// automatically recover.
 				log.Fatalln(fmt.Fprintf(os.Stderr, "%% Error: %v: %v", e.Code(), e))
-				sendError(e, apiClientErrorUrl, log)
-
 			default:
 				log.Info("Ignored %v", e)
 			}
@@ -222,21 +225,21 @@ loop:
 
 	log.Info("Closing consumer")
 	c.Close()
+}
 
-	/*ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
-	defer cancel()
-
-	requestStartTime := time.Now()
-
-	if err := startConsumerGroup(ctx, brokerList, topic, group); err != nil {
-		log.Fatal(err)
+// TODO Simulating Sanction logic - in the real world should use something like https://github.com/moov-io/watchman
+func sanctionNameCheckFailed(sanctionNames []string, value avro2.Payment) bool {
+	r := rand.Intn(10)
+	time.Sleep(time.Duration(r) * time.Second)
+	for _, name := range sanctionNames {
+		if strings.EqualFold(name, value.UsernameFrom) ||
+			strings.EqualFold(name, value.UsernameTo) ||
+			strings.EqualFold(name, value.UsernameFromAddress) ||
+			strings.EqualFold(name, value.UsernameToAddress) {
+			return true
+		}
 	}
-
-	elapsedTime := float64(time.Since(requestStartTime)) / float64(time.Millisecond)
-	requestCount.Add(ctx, 1)
-	requestDuration.Record(ctx, elapsedTime)
-
-	<-ctx.Done()*/
+	return false
 }
 
 func parseHeaders(headers map[string]string) (*trace.TraceID, *trace.SpanID, *string, error) {
@@ -267,153 +270,3 @@ func parseHeaders(headers map[string]string) (*trace.TraceID, *trace.SpanID, *st
 	}
 	return &traceIDResponse, &spanIDResponse, &requestId, nil
 }
-
-func sendError(e kafka.Error, apiClientUrl string, log *logrus.Logger) {
-	errorMsg := fmt.Sprintf("{\"msg\": \"Processing error: %v\"}", e.String())
-	req, err := http.NewRequest("POST", apiClientUrl, bytes.NewBuffer([]byte(errorMsg)))
-	if err != nil {
-		panic(err)
-	}
-
-	req.Header.Add("Content-Type", "application/json")
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		log.Info(err)
-		return
-	}
-
-	log.Info("Response api nodejs-express: ", resp)
-}
-
-func sendErrorMessage(e *kafka.Message, error string, apiClientUrl string, log *logrus.Logger) {
-	errorMsg := fmt.Sprintf("{\"msg\": \"Processing error: %v\"}", error)
-	req, err := http.NewRequest("POST", apiClientUrl, bytes.NewBuffer([]byte(errorMsg)))
-	if err != nil {
-		panic(err)
-	}
-
-	for _, h := range e.Headers {
-		req.Header.Add(h.Key, string(e.Value))
-	}
-	req.Header.Add("Content-Type", "application/json")
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		panic(err)
-	}
-
-	log.Info("Response api nodejs-express: ", resp)
-
-}
-
-/*func startConsumerGroup(ctx context.Context, brokerList []string, topic string, group string) error {
-	consumerGroupHandler := Consumer{}
-	// Wrap instrumentation
-	handler := otelsarama.WrapConsumerGroupHandler(&consumerGroupHandler)
-
-	config := sarama.NewConfig()
-	config.Version = sarama.V2_5_0_0
-	config.Consumer.Offsets.Initial = sarama.OffsetOldest
-
-	// Create consumer group
-	consumerGroup, err := sarama.NewConsumerGroup(brokerList, group, config)
-	if err != nil {
-		return fmt.Errorf("starting consumer group: %w", err)
-	}
-
-	err = consumerGroup.Consume(ctx, []string{topic}, handler)
-	if err != nil {
-		return fmt.Errorf("consuming via handler: %w", err)
-	}
-	return nil
-}
-
-func processMessage(msg *sarama.ConsumerMessage) {
-	// Extract tracing info from message
-	headers := make(map[string]string)
-	for _, v := range msg.Headers {
-		headers[string(v.Key)] = string(v.Value)
-	}
-
-	ctx := otel.GetTextMapPropagator().Extract(context.Background(), otelsarama.NewConsumerMessageCarrier(msg))
-
-	tr := otel.Tracer("consumer")
-	traceId := headers["X-B3-TraceId"]
-	_, span := tr.Start(ctx, "consuming message for traceID="+traceId, trace.WithAttributes(
-		semconv.MessagingOperationProcess,
-	))
-	defer span.End()
-
-	//roll := 1 + rand.Intn(6)
-
-	//rollValueAttr := attribute.Int("roll.value", roll)
-	//span.SetAttributes(rollValueAttr)
-	//rollCnt.Add(ctx, 1, metric.WithAttributes(rollValueAttr))
-	var payment Payment
-	if err := json.Unmarshal(msg.Value, &payment); err != nil {
-		fmt.Info(err)
-		return
-	}
-	log.Info("Successful read message for requestId: ", payment.RequestID)
-	log.Info("Successful read message:headers: ", headers)
-
-	errorMsg := fmt.Sprintf("{\"msg\": \"Processing error with traceId: %v\"}", traceId)
-	req, err := http.NewRequest("POST", apiClientUrl, bytes.NewBuffer([]byte(errorMsg)))
-	if err != nil {
-		panic(err)
-	}
-
-	for k, v := range headers {
-		req.Header.Add(k, v)
-	}
-	req.Header.Add("Content-Type", "application/json")
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		fmt.Info(err)
-		return
-	}
-
-	log.Info("Response api nodejs-express: ", resp)
-}
-*/
-// Consumer represents a Sarama consumer group consumer.
-//type Consumer struct{}
-
-/*// Setup is run at the beginning of a new session, before ConsumeClaim.
-func (consumer *Consumer) Setup(sarama.ConsumerGroupSession) error {
-	return nil
-}
-
-// Cleanup is run at the end of a session, once all ConsumeClaim goroutines have exited.
-func (consumer *Consumer) Cleanup(sarama.ConsumerGroupSession) error {
-	return nil
-}
-
-// ConsumeClaim must start a consumer loop of ConsumerGroupClaim's Messages().
-func (consumer *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
-	/*	var err error
-		rollCntInit, err := meter.Int64Counter("dice.rolls",
-			metric.WithDescription("The number of rolls by roll value"),
-			metric.WithUnit("{roll}"))
-
-		if err != nil {
-			return err
-		}
-		rollCnt = rollCntInit
-*/
-// NOTE:
-// Do not move the code below to a goroutine.
-// The `ConsumeClaim` itself is called within a goroutine, see:
-// https://github.com/IBM/sarama/blob/master/consumer_group.go#L27-L29
-/*	for message := range claim.Messages() {
-		processMessage(message)
-		session.MarkMessage(message, "")
-	}
-
-	return nil
-}*/

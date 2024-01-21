@@ -1,5 +1,5 @@
 {
-  "name": "nodejs-express-server",
+  "name": "user-service-nodejs",
   "version": "1.0.0",
   "description": "",
   "main": "app.js",

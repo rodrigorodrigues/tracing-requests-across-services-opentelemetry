@@ -28,11 +28,11 @@ type Payment struct {
 
 	UsernameFrom string `json:"usernameFrom"`
 
-	UsernameFromCountry string `json:"usernameFromCountry"`
+	UsernameFromAddress string `json:"usernameFromAddress"`
 
 	UsernameTo string `json:"usernameTo"`
 
-	UsernameToCountry string `json:"usernameToCountry"`
+	UsernameToAddress string `json:"usernameToAddress"`
 }
 
 const PaymentAvroCRC64Fingerprint = "\xca\n\xa7\ry6ا"
@@ -87,7 +87,7 @@ func writePayment(r Payment, w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	err = vm.WriteString(r.UsernameFromCountry, w)
+	err = vm.WriteString(r.UsernameFromAddress, w)
 	if err != nil {
 		return err
 	}
@@ -95,7 +95,7 @@ func writePayment(r Payment, w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	err = vm.WriteString(r.UsernameToCountry, w)
+	err = vm.WriteString(r.UsernameToAddress, w)
 	if err != nil {
 		return err
 	}
@@ -107,7 +107,7 @@ func (r Payment) Serialize(w io.Writer) error {
 }
 
 func (r Payment) Schema() string {
-	return "{\"fields\":[{\"name\":\"requestId\",\"type\":\"string\"},{\"name\":\"createdAt\",\"type\":{\"logicalType\":\"timestamp-millis\",\"type\":\"long\"}},{\"name\":\"status\",\"type\":\"string\"},{\"name\":\"total\",\"type\":{\"logicalType\":\"decimal\",\"precision\":18,\"scale\":2,\"type\":\"bytes\"}},{\"name\":\"usernameFrom\",\"type\":\"string\"},{\"name\":\"usernameFromCountry\",\"type\":\"string\"},{\"name\":\"usernameTo\",\"type\":\"string\"},{\"name\":\"usernameToCountry\",\"type\":\"string\"}],\"name\":\"com.example.schema.avro.Payment\",\"type\":\"record\"}"
+	return "{\"fields\":[{\"name\":\"requestId\",\"type\":\"string\"},{\"name\":\"createdAt\",\"type\":{\"logicalType\":\"timestamp-millis\",\"type\":\"long\"}},{\"name\":\"status\",\"type\":\"string\"},{\"name\":\"total\",\"type\":{\"logicalType\":\"decimal\",\"precision\":18,\"scale\":2,\"type\":\"bytes\"}},{\"name\":\"usernameFrom\",\"type\":\"string\"},{\"name\":\"usernameFromAddress\",\"type\":\"string\"},{\"name\":\"usernameTo\",\"type\":\"string\"},{\"name\":\"usernameToAddress\",\"type\":\"string\"}],\"name\":\"com.example.schema.avro.Payment\",\"type\":\"record\"}"
 }
 
 func (r Payment) SchemaName() string {
@@ -151,7 +151,7 @@ func (r *Payment) Get(i int) types.Field {
 		return w
 
 	case 5:
-		w := types.String{Target: &r.UsernameFromCountry}
+		w := types.String{Target: &r.UsernameFromAddress}
 
 		return w
 
@@ -161,7 +161,7 @@ func (r *Payment) Get(i int) types.Field {
 		return w
 
 	case 7:
-		w := types.String{Target: &r.UsernameToCountry}
+		w := types.String{Target: &r.UsernameToAddress}
 
 		return w
 
@@ -213,7 +213,7 @@ func (r Payment) MarshalJSON() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	output["usernameFromCountry"], err = json.Marshal(r.UsernameFromCountry)
+	output["usernameFromAddress"], err = json.Marshal(r.UsernameFromAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -221,7 +221,7 @@ func (r Payment) MarshalJSON() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	output["usernameToCountry"], err = json.Marshal(r.UsernameToCountry)
+	output["usernameToAddress"], err = json.Marshal(r.UsernameToAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -306,18 +306,18 @@ func (r *Payment) UnmarshalJSON(data []byte) error {
 		return fmt.Errorf("no value specified for usernameFrom")
 	}
 	val = func() json.RawMessage {
-		if v, ok := fields["usernameFromCountry"]; ok {
+		if v, ok := fields["usernameFromAddress"]; ok {
 			return v
 		}
 		return nil
 	}()
 
 	if val != nil {
-		if err := json.Unmarshal([]byte(val), &r.UsernameFromCountry); err != nil {
+		if err := json.Unmarshal([]byte(val), &r.UsernameFromAddress); err != nil {
 			return err
 		}
 	} else {
-		return fmt.Errorf("no value specified for usernameFromCountry")
+		return fmt.Errorf("no value specified for usernameFromAddress")
 	}
 	val = func() json.RawMessage {
 		if v, ok := fields["usernameTo"]; ok {
@@ -334,18 +334,18 @@ func (r *Payment) UnmarshalJSON(data []byte) error {
 		return fmt.Errorf("no value specified for usernameTo")
 	}
 	val = func() json.RawMessage {
-		if v, ok := fields["usernameToCountry"]; ok {
+		if v, ok := fields["usernameToAddress"]; ok {
 			return v
 		}
 		return nil
 	}()
 
 	if val != nil {
-		if err := json.Unmarshal([]byte(val), &r.UsernameToCountry); err != nil {
+		if err := json.Unmarshal([]byte(val), &r.UsernameToAddress); err != nil {
 			return err
 		}
 	} else {
-		return fmt.Errorf("no value specified for usernameToCountry")
+		return fmt.Errorf("no value specified for usernameToAddress")
 	}
 	return nil
 }

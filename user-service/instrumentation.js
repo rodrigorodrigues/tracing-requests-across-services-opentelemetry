@@ -1,7 +1,6 @@
 /*instrumentation.js*/
 const opentelemetry = require('@opentelemetry/sdk-node');
 const { Resource } = require('@opentelemetry/resources');
-//const { NodeTracerProvider } = require('@opentelemetry/sdk-trace-node');
 const {
     getNodeAutoInstrumentations,
 } = require('@opentelemetry/auto-instrumentations-node');
@@ -36,11 +35,6 @@ const resource = Resource.default().merge(
     }),
 );
 
-/*
-const provider = new NodeTracerProvider();
-provider.register();
-*/
-
 let url = `${process.env.OTLP_URL || 'http://localhost:4317'}`;
 const sdk = new opentelemetry.NodeSDK({
     resource: resource,
@@ -61,46 +55,8 @@ const sdk = new opentelemetry.NodeSDK({
         }),
     }),
     instrumentations: [
-/*
-        new WinstonInstrumentation({
-            enabled: true,
-            logHook: (_span, record) => {
-                record['resource.service.name'] = provider.resource.attributes['service.name'];
-            },
-        }),
-*/
-        getNodeAutoInstrumentations(/*{
-            // Enable Instrumentations for PostgreSQL Database
-            "@opentelemetry/instrumentation-pg": {
-                requireParentSpan: true,
-                enhancedDatabaseReporting: true,
-            },
-            "@opentelemetry/instrumentation-http": {
-                ignoreIncomingRequestHook(req) {
-                    // Ignore routes to avoid the trace capture, e.g. RegEx to ignore the incoming route /api/telemetry
-                    return !!req.url.match(
-                        '/^(https?:\\/\\/)?([\\da-z\\.-]+)(\\/[\\d|\\w]{2})(\\/api\\/traces)/'
-                    );
-                },
-            },
-            "@opentelemetry/instrumentation-express": {
-                enabled: true,
-            },
-        }*/),
+        getNodeAutoInstrumentations(),
     ],
     autoDetectResources: true
 });
-
-/*
-registerInstrumentations({
-    instrumentations: [
-        new WinstonInstrumentation({
-            enabled: true,
-            logHook: (_span, record) => {
-                record['resource.service.name'] = 'user-service';
-            },
-        }),
-    ],
-});
-*/
 sdk.start();

@@ -4,7 +4,7 @@
   "namespace": "com.example.schema.avro",
   "fields": [
     {
-      "name": "paymentId",
+      "name": "requestId",
       "type": "string"
     },
     {

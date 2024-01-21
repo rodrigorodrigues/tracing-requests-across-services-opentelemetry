@@ -4,16 +4,18 @@ extensions:
     zpages:
         endpoint: 0.0.0.0:55679
     health_check:
+
+# Add multiple receivers Zipkin, Otlp and Fluentforward.
 receivers:
     zipkin:
     otlp:
         protocols:
             grpc:
             http:
-    filelog:
-        include: [/tmp/*.log]
     fluentforward:
         endpoint: 0.0.0.0:8006
+
+# Add multiple exporters Grafana Tempo/Loki, Elasticsearch and Prometheus
 exporters:
     otlp:
         endpoint: tempo:4317
@@ -25,7 +27,6 @@ exporters:
             insecure: true
     logging:
         loglevel: "DEBUG"
-#        verbosity: detailed
     debug:
         verbosity: detailed
     loki:
@@ -36,12 +37,6 @@ exporters:
         endpoints: http://elasticsearch:9200
         logs_index: openetelemetry_log_index
 
-    prometheusremotewrite:
-        endpoint: http://prometheus:9090/api/prom/push
-        target_info:
-            enabled: false
-        tls:
-            insecure: true
     prometheus:
         endpoint: "0.0.0.0:1234"
 #        namespace: test-space
@@ -54,6 +49,7 @@ exporters:
         add_metric_suffixes: false
         resource_to_telemetry_conversion:
             enabled: true
+
 processors:
     batch:
     transform:
@@ -63,6 +59,7 @@ processors:
               statements:
                 - set(trace_id.string,attributes["trace_id"])
                 - set(span_id.string,attributes["span_id"])
+#                - set(body.string,attributes["msg"])
     attributes:
         actions:
             - action: insert
@@ -70,57 +67,43 @@ processors:
               value: app_name, trace_id
 #            - action: extract
 #              key: fluent.tag
-#              pattern: serviceName='(?P<service_name>.*)'.*?traceID=(?P<trace_id>\w+).*?spanID=(?P<span_id>.*).*?requestId='(?P<request_id>.*)'
+#              pattern: serviceName='(?P<service_name>.*?)'
             - action: extract
-              key: fluent.tag
+              key: msg
               pattern: serviceName='(?P<service_name>.*?)'
+#            - action: extract
+#              key: fluent.tag
+#              pattern: traceID=(?P<trace_id>\w+)
             - action: extract
-              key: fluent.tag
+              key: msg
               pattern: traceID=(?P<trace_id>\w+)
+#            - action: extract
+#              key: fluent.tag
+#              pattern: spanID=(?P<span_id>\w+)
             - action: extract
-              key: fluent.tag
+              key: msg
               pattern: spanID=(?P<span_id>\w+)
+#            - action: extract
+#              key: fluent.tag
+#              pattern: requestId='(?P<request_id>.*?)'
             - action: extract
-              key: fluent.tag
+              key: msg
               pattern: requestId='(?P<request_id>.*?)'
+#            - action: delete
+#              key: fluent.tag
             - action: delete
-              key: fluent.tag
+              key: msg
 
+# Apply filtering to skip traces for /actuator endpoints
     filter/spans:
-#        error_mode: ignore
-#        traces:
-#            span:
-#                - 'attributes["http.target"] == "/actuator/health"'
-#                - 'resource.attributes["host.name"] == "localhost"'
-#                - 'name == "app_3"'
-#            spanevent:
-#                - 'attributes["http.route"] == actuator/.*'
-#                - 'IsMatch(name, ".*grpc.*")'
         spans:
             exclude:
                 match_type: regexp
-#                services:
-#                    - auth-service-python
-#                span_names:
-#                    - recv
                 attributes:
                     - key: http.url
                       value: /actuator.*
-#                    - key: http.target
-#                      value: /actuator.*
-#                span_names:
-#                    - recv
-#                    - key: name
-#                      value: recv
-#                    - key: service.name
-#                      value: auth-service-python
-#            span:
-#                - 'attributes["http.route"] == "/actuator/health"'
-#                - 'IsMatch(attributes["http.route"], "/actuator/.*")'
-#                - 'attributes["http.url"] == "/actuator/health"'
-#                - 'IsMatch(attributes["http.url"], "/actuator/.*")'
-#            spanevent:
-#                - 'Name == "recv"'
+
+# Apply filtering to skip traces for specific names
     filter/spans2:
         spans:
             exclude:
@@ -129,6 +112,8 @@ processors:
                     - recv
                     - fs.*
                     - tcp.*
+
+# Apply filtering to collect logs where contains traceID=
     filter/logs:
         error_mode: ignore
         logs:
@@ -136,20 +121,21 @@ processors:
                 match_type: regexp
                 bodies:
                     - traceID=(\w+)
+
 service:
     pipelines:
         logs:
-            receivers: [  otlp, fluentforward ] #filelog
+            receivers: [  otlp, fluentforward ]
             processors: [ attributes, transform ]
             exporters: [ debug, elasticsearch/log ]
         logs/2:
-            receivers: [  otlp, fluentforward ] #filelog
+            receivers: [  otlp, fluentforward ]
             processors: [ attributes, filter/logs, transform ]
             exporters: [debug, loki ]
         metrics:
             receivers: [ otlp ]
             processors: [ batch ]
-            exporters: [ debug, prometheus ] #prometheusremotewrite
+            exporters: [ debug, prometheus ]
         traces:
             receivers: [otlp, zipkin]
             processors: [filter/spans, filter/spans2]

@@ -1,4 +1,4 @@
-FROM node:19.3.0-slim
+FROM node:20-slim
 
 # Create app directory
 WORKDIR /usr/src/app
@@ -15,6 +15,4 @@ RUN npm install --only=production
 # Bundle app source
 COPY . .
 
-ENV JAVA_CMD="node app.js"
-
-CMD [ "node", "app.js" ]
+CMD [ "node", "--env-file=.env", "app.js" ]
