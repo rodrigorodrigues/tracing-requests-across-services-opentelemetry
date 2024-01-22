@@ -6,7 +6,6 @@ import com.example.springboot.service.PaymentService;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -42,9 +41,7 @@ public class PaymentController extends AbstractController {
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<ResponseEntity<ResponsePaymentDto>> create(@RequestBody @Valid RequestPaymentDto requestPaymentDto,
-                                                           Authentication authentication,
-                                                           @RequestHeader HttpHeaders headers) {
-        log.debug("Request headers: {}", headers);
+                                                           Authentication authentication) {
         return paymentService.save(requestPaymentDto, getUsername(authentication))
                 .map(p -> ResponseEntity.status(HttpStatus.CREATED).location(URI.create("/v1/paments/"+p.requestId())).body(p))
                 .onErrorResume(e -> Mono.error(new ResponseStatusException(HttpStatus.BAD_REQUEST, "Failed to create payment: " + e.getLocalizedMessage(), e)));

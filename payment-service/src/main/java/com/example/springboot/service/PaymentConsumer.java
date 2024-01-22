@@ -65,7 +65,6 @@ public class PaymentConsumer {
 
     @Scheduled(fixedDelay = 5000, initialDelay = 1000)
     public void scheduledExpiredPayment() {
-        log.debug("Processing scheduledPayment at: {}", new Date());
         paymentService.declineExpiredPayments()
                 .subscribe(p -> log.debug("Declined payment - reason expired time: {}", p));
     }

@@ -91,7 +91,7 @@ public class PaymentService {
                         sink.error(new RuntimeException("Could not convert json", e));
                     }
                 })
-                .filter(n -> n.username().equals(username));
+                .filter(n -> n.usernameTo().equals(username));
     }
 
     @TransactionalEventListener
@@ -107,7 +107,6 @@ public class PaymentService {
     }
 
     private Flux<ResponsePaymentDto> getLastPaymentsModifiedByUsername(String username) {
-        log.debug("Getting getLastPaymentsModifiedByUsername by username: {}", username);
         List<ResponsePaymentDto> payments = mapPayments.remove(username);
         return payments != null ? Flux.fromIterable(payments) : Flux.empty();
     }
@@ -115,7 +114,6 @@ public class PaymentService {
     @Transactional(readOnly = true)
     @PostFilter("hasAuthority('ADMIN') or filterObject.usernameFrom == @paymentService.getUsername(authentication) or filterObject.usernameTo == @paymentService.getUsername(authentication)")
     public Flux<ResponsePaymentDto> getAllByUsernameFrom(String username, AtomicBoolean firstVisit) {
-        log.debug("Calling getAllByUsernameFrom by username: {}={}", username, firstVisit.get());
         Flux<ResponsePaymentDto> payments = Flux.empty();
         if (firstVisit.getAndSet(false)) {
             if (username.equals("admin")) {
@@ -201,7 +199,8 @@ public class PaymentService {
     }
 
     private Mono<ResponsePaymentDto> publishNotificationEvent(ResponsePaymentDto resp) {
-        NotificationResponseDto notification = new NotificationResponseDto(resp.usernameTo(),
+        NotificationResponseDto notification = new NotificationResponseDto(resp.usernameFrom(),
+                resp.usernameTo(),
                 resp.requestId(),
                 resp.total(),
                 Duration.between(resp.createdAt(), Instant.now()).getSeconds());

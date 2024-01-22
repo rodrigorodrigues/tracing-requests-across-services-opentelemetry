@@ -61,18 +61,6 @@ public class PaymentApplication {
                 .build();
         return new ReactiveRedisTemplate<>(connectionFactory, serializationContext);
     }
-    /*public ReactiveRedisOperations<String, NotificationResponseDto> redisOperations(ReactiveRedisConnectionFactory reactiveRedisConnectionFactory) {
-        Jackson2JsonRedisSerializer<NotificationResponseDto> serializer = new Jackson2JsonRedisSerializer<>(NotificationResponseDto.class);
-
-        RedisSerializationContext.RedisSerializationContextBuilder<String, NotificationResponseDto> builder =
-                RedisSerializationContext.newSerializationContext(new StringRedisSerializer());
-
-        RedisSerializationContext<String, NotificationResponseDto> context = builder.value(serializer)
-                .hashValue(serializer)
-                .hashKey(serializer).build();
-
-        return new ReactiveRedisTemplate<>(reactiveRedisConnectionFactory, context);
-    }*/
 
     @Bean
     ConnectionFactoryInitializer initializer(ConnectionFactory connectionFactory) {
@@ -122,13 +110,11 @@ public class PaymentApplication {
 
     @Bean
     public ProducerFactory<String, Object> producerFactory(KafkaProperties kafkaProperties) {
-        log.debug("AopConfiguration:producerFactory:kafkaProperties: {}", kafkaProperties);
         return new DefaultKafkaProducerFactory<>(kafkaProperties.buildProducerProperties());
     }
 
     @Bean
     public KafkaTemplate<String, Object> kafkaTemplate(ProducerFactory<String, Object> producerFactory) {
-        log.debug("AopConfiguration:kafkaTemplate:producerFactory: {}", producerFactory);
         KafkaTemplate<String, Object> kafkaTemplate = new KafkaTemplate<>(producerFactory);
         kafkaTemplate.setObservationEnabled(true);
         kafkaTemplate.setMessageConverter(converter());

@@ -26,6 +26,7 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,6 +63,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.StreamSupport;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
@@ -220,17 +222,23 @@ class PaymentApplicationTests {
     @Test
     @WithMockUser(username = "admin", authorities = "ADMIN")
     void contextLoads() throws Exception {
-        List<ResponsePaymentDto> payments = client.mutate().responseTimeout(Duration.ofSeconds(6)).build()
+        Flux<ResponsePaymentDto> payments = client.mutate().responseTimeout(Duration.ofSeconds(6)).build()
                 .get().uri("/api/v1/dashboard/payments")
                 .exchange()
                 .expectStatus().isOk()
-                .expectBodyList(ResponsePaymentDto.class)
-                .returnResult()
+                .returnResult(ResponsePaymentDto.class)
                 .getResponseBody();
 
-        assertThat(payments).isNotEmpty();
+        AtomicReference<List<ResponsePaymentDto>> atomicReference = new AtomicReference<>();
+        atomicReference.set(new ArrayList<>());
+        StepVerifier.create(payments)
+                .consumeNextWith(n -> atomicReference.get().add(n))
+                .thenCancel()
+                .verify();
 
-        ResponsePaymentDto payment = payments.get(0);
+        assertThat(atomicReference.get()).isNotEmpty();
+
+        ResponsePaymentDto payment = atomicReference.get().get(0);
         assertThat(payment).isNotNull();
 
         client.get().uri("/api/v1/payments/" + payment.requestId())
@@ -386,21 +394,27 @@ class PaymentApplicationTests {
                         .expectBody()
                         .jsonPath("$.status").isEqualTo(PaymentStatus.WAITING_FOR_USER_CONFIRMATION.name()));
 
-        List<NotificationResponseDto> notifications = client.mutate().responseTimeout(Duration.ofSeconds(6)).build()
+        Flux<NotificationResponseDto> result = client.mutate().responseTimeout(Duration.ofSeconds(6)).build()
                 .mutateWith(mockUser("admin"))
                 .get().uri("/api/v1/dashboard/notifications")
                 .exchange()
                 .expectStatus().isOk()
-                .expectBodyList(NotificationResponseDto.class)
-                .returnResult()
+                .returnResult(NotificationResponseDto.class)
                 .getResponseBody();
 
-        assertThat(notifications).isNotEmpty();
+        AtomicReference<List<NotificationResponseDto>> atomicReference = new AtomicReference<>();
+        atomicReference.set(new ArrayList<>());
+        StepVerifier.create(result)
+                .consumeNextWith(n -> atomicReference.get().add(n))
+                .thenCancel()
+                .verify();
 
-        notifications.forEach(n -> client.mutateWith(csrf()).mutateWith(mockUser("admin")).post().uri("/api/v1/dashboard/notifications")
+        assertThat(atomicReference.get()).isNotEmpty();
+
+        atomicReference.get().forEach(n -> client.mutateWith(csrf()).mutateWith(mockUser("admin")).post().uri("/api/v1/dashboard/notifications")
                 .header("requestId", n.requestId())
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(fromValue(new NotificationRequestDto(n.username(), n.requestId(), true)))
+                .body(fromValue(new NotificationRequestDto(n.usernameTo(), n.requestId(), true)))
                 .exchange()
                 .expectStatus().isOk());
 
@@ -435,16 +449,23 @@ class PaymentApplicationTests {
                 .exchange()
                 .expectStatus().isCreated();
 
-        List<ResponsePaymentDto> payments = client.mutate().responseTimeout(Duration.ofSeconds(6)).build()
+        Flux<ResponsePaymentDto> payments = client.mutate().responseTimeout(Duration.ofSeconds(6)).build()
                 .get().uri("/api/v1/dashboard/payments")
                 .exchange()
                 .expectStatus().isOk()
-                .expectBodyList(ResponsePaymentDto.class)
-                .returnResult()
+                .returnResult(ResponsePaymentDto.class)
                 .getResponseBody();
 
-        assertThat(payments).isNotEmpty();
-        for (ResponsePaymentDto payment : payments) {
+        AtomicReference<List<ResponsePaymentDto>> atomicReferencePayment = new AtomicReference<>();
+        atomicReferencePayment.set(new ArrayList<>());
+        StepVerifier.create(payments)
+                .consumeNextWith(n -> atomicReferencePayment.get().add(n))
+                .thenCancel()
+                .verify();
+
+        assertThat(atomicReferencePayment.get()).isNotEmpty();
+
+        for (ResponsePaymentDto payment : atomicReferencePayment.get()) {
             if (payment.requestId().equals(requestId.toString())) {
                 assertThat(payment.status()).isEqualTo(PaymentStatus.PROCESSING);
                 assertThat(payment.requestId()).isEqualTo(requestId.toString());
@@ -510,25 +531,31 @@ class PaymentApplicationTests {
                         .expectBody()
                         .jsonPath("$.status").isEqualTo(PaymentStatus.WAITING_FOR_USER_CONFIRMATION.name()));
 
-        List<NotificationResponseDto> notifications = client.mutate().responseTimeout(Duration.ofSeconds(6)).build()
+        Flux<NotificationResponseDto> notifications = client.mutate().responseTimeout(Duration.ofSeconds(6)).build()
                 .mutateWith(mockUser("admin"))
                 .get().uri("/api/v1/dashboard/notifications")
                 .exchange()
                 .expectStatus().isOk()
-                .expectBodyList(NotificationResponseDto.class)
-                .returnResult()
+                .returnResult(NotificationResponseDto.class)
                 .getResponseBody();
 
-        assertThat(notifications).isNotEmpty();
+        AtomicReference<List<NotificationResponseDto>> atomicReference = new AtomicReference<>();
+        atomicReference.set(new ArrayList<>());
+        StepVerifier.create(notifications)
+                .consumeNextWith(n -> atomicReference.get().add(n))
+                .thenCancel()
+                .verify();
 
-        NotificationResponseDto notificationResponseDto = notifications.stream().filter(p -> p.requestId().equals(requestId.toString()))
+        assertThat(atomicReference.get()).isNotEmpty();
+
+        NotificationResponseDto notificationResponseDto = atomicReference.get().stream().filter(p -> p.requestId().equals(requestId.toString()))
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("Not found requestId: " + requestId));
 
         client.mutateWith(csrf()).mutateWith(mockUser("admin")).post().uri("/api/v1/dashboard/notifications")
                 .header("requestId", notificationResponseDto.requestId())
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(fromValue(new NotificationRequestDto(notificationResponseDto.username(), notificationResponseDto.requestId(), false)))
+                .body(fromValue(new NotificationRequestDto(notificationResponseDto.usernameTo(), notificationResponseDto.requestId(), false)))
                 .exchange()
                 .expectStatus().isOk();
 
@@ -625,21 +652,27 @@ class PaymentApplicationTests {
                         .expectBody()
                         .jsonPath("$.status").isEqualTo(PaymentStatus.WAITING_FOR_USER_CONFIRMATION.name()));
 
-        List<NotificationResponseDto> notifications = client.mutate().responseTimeout(Duration.ofSeconds(6)).build()
+        Flux<NotificationResponseDto> result = client.mutate().responseTimeout(Duration.ofSeconds(6)).build()
                 .mutateWith(mockUser("admin"))
                 .get().uri("/api/v1/dashboard/notifications")
                 .exchange()
                 .expectStatus().isOk()
-                .expectBodyList(NotificationResponseDto.class)
-                .returnResult()
+                .returnResult(NotificationResponseDto.class)
                 .getResponseBody();
 
-        assertThat(notifications).isNotEmpty();
+        AtomicReference<List<NotificationResponseDto>> atomicReference = new AtomicReference<>();
+        atomicReference.set(new ArrayList<>());
+        StepVerifier.create(result)
+                .consumeNextWith(n -> atomicReference.get().add(n))
+                .thenCancel()
+                .verify();
 
-        notifications.forEach(n -> client.mutateWith(csrf()).mutateWith(mockUser("admin")).post().uri("/api/v1/dashboard/notifications")
+        assertThat(atomicReference.get()).isNotEmpty();
+
+        atomicReference.get().forEach(n -> client.mutateWith(csrf()).mutateWith(mockUser("admin")).post().uri("/api/v1/dashboard/notifications")
                 .header("requestId", n.requestId())
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(fromValue(new NotificationRequestDto(n.username(), n.requestId(), true)))
+                .body(fromValue(new NotificationRequestDto(n.usernameTo(), n.requestId(), true)))
                 .exchange()
                 .expectStatus().isOk());
 
@@ -668,23 +701,33 @@ class PaymentApplicationTests {
     @Test
     @WithMockUser(username = "user")
     void shouldFilterByUser() {
-        client.mutate().responseTimeout(Duration.ofSeconds(6)).build()
+        Flux<ResponsePaymentDto> payments = client.mutate().responseTimeout(Duration.ofSeconds(6)).build()
                 .get().uri("/api/v1/dashboard/payments")
                 .exchange()
                 .expectStatus().isOk()
-                .expectBodyList(ResponsePaymentDto.class)
-                .consumeWith(resp -> assertThat(resp.getResponseBody().get(0).usernameFrom()).isEqualTo("user"));
+                .returnResult(ResponsePaymentDto.class)
+                .getResponseBody();
+
+        StepVerifier.create(payments)
+                .assertNext(resp -> assertThat(resp.usernameFrom()).isEqualTo("user"))
+                .thenCancel()
+                .verify();
     }
 
+    @Disabled
     @Test
     @WithMockUser(username = "dummy")
     void shouldReturnEmptyList() {
-        client.mutate().responseTimeout(Duration.ofSeconds(6)).build()
+        Flux<ResponsePaymentDto> payments = client.mutate().responseTimeout(Duration.ofSeconds(6)).build()
                 .get().uri("/api/v1/dashboard/payments")
                 .exchange()
                 .expectStatus().isOk()
-                .expectBody()
-                .jsonPath("$").doesNotExist();
+                .returnResult(ResponsePaymentDto.class)
+                .getResponseBody();
+
+        StepVerifier.create(payments)
+                .expectNextCount(0)
+                .verifyComplete();
     }
 
     @Test

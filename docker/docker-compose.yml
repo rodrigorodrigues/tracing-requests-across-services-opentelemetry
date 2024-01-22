@@ -1,5 +1,38 @@
 version: '3.2'
 services:
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    hostname: nginx
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - payment-service-spring-boot
+      - frontend
+    ports:
+      - "80:80"
+    networks:
+      net:
+        aliases:
+          - nginx
+
+  frontend:
+    build:
+      args:
+        - PORT=3001
+        - NODE_ENV=production
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    environment:
+      - NODE_ENV=production
+    ports:
+      - "3001"
+    networks:
+      net:
+        aliases:
+          - frontend
+
   prometheus:
     image: prom/prometheus
     container_name: prom
@@ -33,6 +66,26 @@ services:
       net:
         aliases:
           - tempo
+
+  zipkin:
+    image: ghcr.io/openzipkin/zipkin-slim:${TAG:-latest}
+    container_name: zipkin
+    # Environment settings are defined here https://github.com/openzipkin/zipkin/blob/master/zipkin-server/README.md#environment-variables
+    environment:
+      - STORAGE_TYPE=mem
+      # Uncomment to enable self-tracing
+      # - SELF_TRACING_ENABLED=true
+      # Uncomment to increase heap size
+      # - JAVA_OPTS=-Xms128m -Xmx128m -XX:+ExitOnOutOfMemoryError
+    ports:
+      # Port used for the Zipkin UI and HTTP Api
+      - "9411:9411"
+    # Uncomment to enable debug logging
+    # command: --logging.level.zipkin2=DEBUG
+    networks:
+      net:
+        aliases:
+          - zipkin
 
   loki:
     image: grafana/loki:2.9.0
@@ -81,7 +134,6 @@ services:
       - "4318:4318"   # OTLP http receiver
       - "55679:55679" # zpages extension
       - "1234:1234" # zpages extension
-      - "9411:9411" # zipkin
     networks:
       net:
         aliases:
@@ -209,18 +261,24 @@ services:
       - SCHEMA_REGISTRY_URL=http://schema-registry:8081
       - SERVER_PORT=8080
       - OTLP_URL=http://otel-collector:4318
-      - SPRING_PROFILES_ACTIVE=logfile
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/postgres
-      - SPRING_DATASOURCE_USERNAME=postgres
-      - SPRING_DATASOURCE_PASSWORD=changeme
-      - MANAGEMENT_ZIPKIN_TRACING_ENDPOINT=http://otel-collector:9411/api/v2/spans
+      #- SPRING_PROFILES_ACTIVE=logfile
+      - SPRING_R2DBC_URL=r2dbc:postgresql://postgres:5432/postgres
+      - SPRING_R2DBC_USERNAME=postgres
+      - SPRING_R2DBC_PASSWORD=changeme
+      - SPRING_DATA_REDIS_HOST=redis
     depends_on:
       - otel-collector
       - kafka
       - schema-registry
       - postgres
+      - redis
     ports:
       - "8080:8080"
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: localhost:24224
+        tag: payment-service-spring-boot
     networks:
       net:
         aliases:
@@ -252,6 +310,11 @@ services:
       context: ../user-service
       dockerfile: Dockerfile
     container_name: user-service-nodejs
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: localhost:24224
+        tag: user-service-nodejs
     networks:
       net:
         aliases:

@@ -36,7 +36,7 @@ if config['SET_LOG_FILE']:
 
 def main():
     service_name = config['OTEL_SERVICE_NAME']
-    instrument_log(service_name)
+    #instrument_log(service_name)
     log.info("Start consuming messages")
     process_messages(config['PAYMENT_SCHEMA_AVRO_FILE'], config['UPDATE_PAYMENT_SCHEMA_AVRO_FILE'],
                      config['BOOSTRAP_SERVERS'], config['GROUP_ID'], config['PAYMENT_TOPIC'],

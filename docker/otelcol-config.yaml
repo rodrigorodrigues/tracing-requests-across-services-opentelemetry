@@ -1,11 +1,11 @@
-extensions:
+extensions: #Extendions used to help with troubleshooting
     memory_ballast:
         size_mib: 512
     zpages:
         endpoint: 0.0.0.0:55679
     health_check:
 
-# Add multiple receivers Zipkin, Otlp and Fluentforward.
+#  Receive data from different sources
 receivers:
     zipkin:
     otlp:
@@ -15,8 +15,12 @@ receivers:
     fluentforward:
         endpoint: 0.0.0.0:8006
 
-# Add multiple exporters Grafana Tempo/Loki, Elasticsearch and Prometheus
+# Exporter to Grafana Tempo/Loki, Elasticsearch and Prometheus
 exporters:
+    zipkin:
+        endpoint: http://zipkin:9411/api/v2/spans
+        tls:
+            insecure: true
     otlp:
         endpoint: tempo:4317
         sending_queue:
@@ -50,16 +54,22 @@ exporters:
         resource_to_telemetry_conversion:
             enabled: true
 
+# Apply filtering before exporting the data.
 processors:
     batch:
-    transform:
+    transform/before:
         error_mode: ignore
         log_statements:
             - context: log
               statements:
-                - set(trace_id.string,attributes["trace_id"])
-                - set(span_id.string,attributes["span_id"])
-#                - set(body.string,attributes["msg"])
+                - set(attributes["msg"], body)
+    transform/after:
+        error_mode: ignore
+        log_statements:
+            - context: log
+              statements:
+                  - set(trace_id.string,attributes["trace_id"])
+                  - set(span_id.string,attributes["span_id"])
     attributes:
         actions:
             - action: insert
@@ -112,6 +122,17 @@ processors:
                     - recv
                     - fs.*
                     - tcp.*
+                    - task payment-consumer.scheduled-expired-payment
+
+# Apply filtering to apply only for 4XX and 5XX errors.
+    filter/spans3:
+        spans:
+            include:
+                match_type: regexp
+                attributes:
+                    - key: status
+                      value: (4|5).*
+
 
 # Apply filtering to collect logs where contains traceID=
     filter/logs:
@@ -122,15 +143,16 @@ processors:
                 bodies:
                     - traceID=(\w+)
 
+# Apply multiple pipelines
 service:
     pipelines:
         logs:
             receivers: [  otlp, fluentforward ]
-            processors: [ attributes, transform ]
+            processors: [ transform/before, attributes, transform/after ]
             exporters: [ debug, elasticsearch/log ]
         logs/2:
             receivers: [  otlp, fluentforward ]
-            processors: [ attributes, filter/logs, transform ]
+            processors: [ transform/before, attributes, transform/after, filter/logs ]
             exporters: [debug, loki ]
         metrics:
             receivers: [ otlp ]
@@ -140,4 +162,8 @@ service:
             receivers: [otlp, zipkin]
             processors: [filter/spans, filter/spans2]
             exporters: [debug, otlp]
+        traces/2:
+            receivers: [otlp, zipkin]
+            processors: [filter/spans, filter/spans3]
+            exporters: [debug, otlp, zipkin]
     extensions: [ memory_ballast, zpages, health_check ]
