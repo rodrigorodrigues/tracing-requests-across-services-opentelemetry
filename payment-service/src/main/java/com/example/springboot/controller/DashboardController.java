@@ -56,11 +56,11 @@ public class DashboardController extends AbstractController {
         httpHeaders.setCacheControl(CacheControl.noCache());
         httpHeaders.setConnection("keep-alive");
         httpHeaders.add("Content-Encoding", "none");
-        Flux<Long> interval = Flux.interval(Duration.ofSeconds(5));
+        Flux<Long> interval = Flux.interval(Duration.ofSeconds(2));
         return ResponseEntity.ok()
                 .headers(httpHeaders)
                 .body(interval.flatMap(p -> paymentService.getNotificationsByUsername(username))
-                        .doOnNext(n -> log.debug("Getting notification: {}", n)));
+                        .doOnNext(n -> log.info("Getting notification: {}", n)));
     }
 
     @PostMapping(value = "/api/v1/dashboard/notifications", produces=MediaType.TEXT_EVENT_STREAM_VALUE)

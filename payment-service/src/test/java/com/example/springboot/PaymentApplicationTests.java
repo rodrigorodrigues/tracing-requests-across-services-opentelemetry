@@ -714,20 +714,15 @@ class PaymentApplicationTests {
                 .verify();
     }
 
-    @Disabled
     @Test
+    @Disabled
     @WithMockUser(username = "dummy")
     void shouldReturnEmptyList() {
-        Flux<ResponsePaymentDto> payments = client.mutate().responseTimeout(Duration.ofSeconds(6)).build()
-                .get().uri("/api/v1/dashboard/payments")
+        client.get().uri("/api/v1/dashboard/payments")
                 .exchange()
                 .expectStatus().isOk()
-                .returnResult(ResponsePaymentDto.class)
-                .getResponseBody();
-
-        StepVerifier.create(payments)
-                .expectNextCount(0)
-                .verifyComplete();
+                .expectBody()
+                .isEmpty();
     }
 
     @Test

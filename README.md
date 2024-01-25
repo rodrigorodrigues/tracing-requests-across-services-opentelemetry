@@ -22,8 +22,9 @@ https://developers.google.com/identity/openid-connect/openid-connect
 #First build kafka dependencies
 docker-compose up -d kafka zookeeper schema-registry
 
-#Then push schema
 cd payment-service
+$ mvn clean package spring-boot:build-image
+#Then push schema
 $ mvn schema-registry:register
 
 cd ..

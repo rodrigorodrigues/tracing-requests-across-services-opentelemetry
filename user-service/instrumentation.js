@@ -26,7 +26,10 @@ const {
 // const {registerInstrumentations} = require('@opentelemetry/instrumentation');
 const {WinstonInstrumentation} = require('@opentelemetry/instrumentation-winston');
 
-diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.INFO);
+const otlpDebug = `${process.env.OTLP_DEBUG_LEVEL || true}`;
+if (otlpDebug === "true") {
+    diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.INFO);
+}
 
 const resource = Resource.default().merge(
     new Resource({
@@ -35,7 +38,7 @@ const resource = Resource.default().merge(
     }),
 );
 
-let url = `${process.env.OTLP_URL || 'http://localhost:4317'}`;
+const url = `${process.env.OTLP_URL || 'http://localhost:4317'}`;
 const sdk = new opentelemetry.NodeSDK({
     resource: resource,
     traceExporter: new OTLPTraceExporter({

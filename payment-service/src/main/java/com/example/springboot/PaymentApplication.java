@@ -17,7 +17,9 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.redis.connection.ReactiveRedisConnectionFactory;
 import org.springframework.data.redis.core.ReactiveRedisOperations;
 import org.springframework.data.redis.core.ReactiveRedisTemplate;
-import org.springframework.data.redis.serializer.*;
+import org.springframework.data.redis.serializer.Jackson2JsonRedisSerializer;
+import org.springframework.data.redis.serializer.RedisSerializationContext;
+import org.springframework.data.redis.serializer.StringRedisSerializer;
 import org.springframework.kafka.config.TopicBuilder;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaAdmin;
@@ -51,15 +53,15 @@ public class PaymentApplication {
     }
 
     @Bean
-    public ReactiveRedisOperations<String, NotificationResponseDto> playerRedisOperations(ReactiveRedisConnectionFactory connectionFactory) {
-        RedisSerializationContext<String, NotificationResponseDto> serializationContext = RedisSerializationContext
-                .<String, NotificationResponseDto>newSerializationContext(new StringRedisSerializer())
-                .key(new StringRedisSerializer())
-                .value(new GenericToStringSerializer<>(NotificationResponseDto.class))
-                .hashKey(new Jackson2JsonRedisSerializer<>(String.class))
-                .hashValue(new GenericJackson2JsonRedisSerializer())
-                .build();
-        return new ReactiveRedisTemplate<>(connectionFactory, serializationContext);
+    ReactiveRedisOperations<String, NotificationResponseDto> redisOperations(ReactiveRedisConnectionFactory factory) {
+        Jackson2JsonRedisSerializer<NotificationResponseDto> serializer = new Jackson2JsonRedisSerializer<>(NotificationResponseDto.class);
+
+        RedisSerializationContext.RedisSerializationContextBuilder<String, NotificationResponseDto> builder =
+                RedisSerializationContext.newSerializationContext(new StringRedisSerializer());
+
+        RedisSerializationContext<String, NotificationResponseDto> context = builder.value(serializer).build();
+
+        return new ReactiveRedisTemplate<>(factory, context);
     }
 
     @Bean

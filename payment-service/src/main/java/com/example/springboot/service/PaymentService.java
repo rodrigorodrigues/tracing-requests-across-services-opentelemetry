@@ -6,7 +6,6 @@ import com.example.springboot.config.PaymentProperties;
 import com.example.springboot.model.*;
 import com.example.springboot.repository.PaymentRepository;
 import com.example.springboot.repository.UserRepository;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -83,14 +82,8 @@ public class PaymentService {
 
 
     public Flux<NotificationResponseDto> getNotificationsByUsername(String username) {
-        return redisOperations.opsForHash().values("notificationKey")
-                .<NotificationResponseDto>handle((p, sink) -> {
-                    try {
-                        sink.next(objectMapper.readValue(p.toString(), NotificationResponseDto.class));
-                    } catch (JsonProcessingException e) {
-                        sink.error(new RuntimeException("Could not convert json", e));
-                    }
-                })
+        return redisOperations.keys("notificationKey_*")
+                .flatMap(k -> redisOperations.opsForValue().get(k))
                 .filter(n -> n.usernameTo().equals(username));
     }
 
@@ -156,7 +149,7 @@ public class PaymentService {
                     return completePayment(p)
                             .doOnNext(resp -> log.info("Processed payment: {}", resp));
                 })
-                .flatMap(p -> redisOperations.opsForHash().remove("notificationKey", notificationRequestDto.requestId())
+                .flatMap(p -> redisOperations.delete(String.format("notificationKey_%s", notificationRequestDto.requestId()))
                         .then(publishPaymentEvent(p)));
     }
 
@@ -204,12 +197,8 @@ public class PaymentService {
                 resp.requestId(),
                 resp.total(),
                 Duration.between(resp.createdAt(), Instant.now()).getSeconds());
-        try {
-            return redisOperations.opsForHash().put("notificationKey", notification.requestId(), objectMapper.writeValueAsString(notification))
+            return redisOperations.opsForValue().set(String.format("notificationKey_%s", notification.requestId()), notification, Duration.ofSeconds(notification.remainingTimeInSeconds()))
                     .thenReturn(resp);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException("Could not convert to json", e);
-        }
     }
 
     private Mono<ResponsePaymentDto> publishPaymentEvent(ResponsePaymentDto resp) {

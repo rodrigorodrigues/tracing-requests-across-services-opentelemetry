@@ -10,6 +10,8 @@ import io.micrometer.tracing.contextpropagation.ObservationAwareSpanThreadLocalA
 import jakarta.annotation.PostConstruct;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.http.codec.ServerCodecConfigurer;
 import org.springframework.http.codec.json.Jackson2JsonDecoder;
 import org.springframework.http.codec.json.Jackson2JsonEncoder;
@@ -43,10 +45,14 @@ public class WebConfiguration implements WebFluxConfigurer {
     }
 
     @Bean
-    CorsWebFilter corsWebFilter() {
+    CorsWebFilter corsWebFilter(Environment environment) {
         CorsConfiguration corsConfig = new CorsConfiguration();
         corsConfig.setAllowCredentials(true);
-        corsConfig.addAllowedOriginPattern("*");
+        if (environment.acceptsProfiles(Profiles.of("docker"))) {
+            corsConfig.addAllowedOriginPattern("*");
+        } else {
+            corsConfig.addAllowedOrigin("*");
+        }
         corsConfig.addAllowedHeader("*");
         corsConfig.addAllowedMethod("*");
 
