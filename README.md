@@ -4,6 +4,8 @@ POC to trace request across multiple services using [OpenTelemetry](https://open
 
 ![img.png](img.png)
 
+![Demo](https://youtu.be/JJUhY4hes_c)
+
 ![img_4.png](img_4.png)
 
 ![img_3.png](img_3.png)
