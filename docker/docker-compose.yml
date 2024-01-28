@@ -261,7 +261,7 @@ services:
       - SCHEMA_REGISTRY_URL=http://schema-registry:8081
       - SERVER_PORT=8080
       - OTLP_URL=http://otel-collector:4318
-      #- SPRING_PROFILES_ACTIVE=logfile
+      - SPRING_PROFILES_ACTIVE=docker
       - SPRING_R2DBC_URL=r2dbc:postgresql://postgres:5432/postgres
       - SPRING_R2DBC_USERNAME=postgres
       - SPRING_R2DBC_PASSWORD=changeme

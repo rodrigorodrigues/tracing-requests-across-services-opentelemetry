@@ -196,7 +196,7 @@ public class PaymentService {
                 resp.usernameTo(),
                 resp.requestId(),
                 resp.total(),
-                Duration.between(resp.createdAt(), Instant.now()).getSeconds());
+                (paymentProperties.getExpirePaymentInSecs() - Duration.between(resp.createdAt(), Instant.now()).toSeconds()));
             return redisOperations.opsForValue().set(String.format("notificationKey_%s", notification.requestId()), notification, Duration.ofSeconds(notification.remainingTimeInSeconds()))
                     .thenReturn(resp);
     }
@@ -283,7 +283,7 @@ public class PaymentService {
     }
 
     private boolean isPaymentExpired(Instant startTime, Instant endTime) {
-        return Duration.between(startTime, endTime).getSeconds() > paymentProperties.getExpirePaymentInSecs();
+        return Duration.between(startTime, endTime).toSeconds() > paymentProperties.getExpirePaymentInSecs();
     }
 
     private static String createReasonFailed(Payment payment, String msg, String emoji) {
@@ -308,7 +308,8 @@ public class PaymentService {
                         payment.setStatus(PaymentStatus.INSUFFICIENT_RESOURCES);
                         payment.setMessage(reason);
                         payment.setProcessedAt(Instant.now());
-                        return paymentRepository.save(payment);
+                        return paymentRepository.save(payment)
+                                .flatMap(p -> publishPaymentEvent(new ResponsePaymentDto(p)));
                     } else {
                         usernameFrom.updateBalance(usernameTo, total);
                         return userRepository.saveAll(Arrays.asList(usernameFrom, usernameTo))
@@ -317,9 +318,9 @@ public class PaymentService {
                                     payment.setMessage("\uD83E\uDD11 Payment successful");
                                     payment.setProcessedAt(Instant.now());
                                     return paymentRepository.save(payment);
-                                }).last();
+                                }).last()
+                                .flatMap(p -> publishPaymentEvent(new ResponsePaymentDto(p, total)));
                     }
-                })
-                .flatMap(p -> publishPaymentEvent(new ResponsePaymentDto(p)));
+                });
     }
 }

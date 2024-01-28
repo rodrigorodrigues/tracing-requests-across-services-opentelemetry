@@ -6,7 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "com.example")
 public class PaymentProperties {
     @NotNull
-    private long expirePaymentInSecs = 120;
+    private long expirePaymentInSecs = 60;
 
     public void setExpirePaymentInSecs(long expirePaymentInSecs) {
         this.expirePaymentInSecs = expirePaymentInSecs;

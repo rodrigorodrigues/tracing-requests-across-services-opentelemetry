@@ -14,7 +14,8 @@ public record ResponsePaymentDto(String requestId,
                                  @JsonIgnore String usernameToAddress,
                                  Instant createdAt,
                                  Instant processedAt,
-                                 String message) {
+                                 String message,
+                                 BigDecimal updatedBalanceUsernameFrom) {
     public ResponsePaymentDto(Payment payment, UserAuth usernameFrom, UserAuth usernameTo) {
         this(payment.getRequestId(),
                 payment.getTotal(),
@@ -25,7 +26,8 @@ public record ResponsePaymentDto(String requestId,
                 usernameTo.getAddress(),
                 payment.getCreatedAt(),
                 payment.getProcessedAt(),
-                payment.getMessage());
+                payment.getMessage(),
+                null);
     }
     public ResponsePaymentDto(Payment payment) {
         this(payment.getRequestId(),
@@ -37,6 +39,20 @@ public record ResponsePaymentDto(String requestId,
                 null,
                 payment.getCreatedAt(),
                 payment.getProcessedAt(),
-                payment.getMessage());
+                payment.getMessage(),
+                null);
+    }
+    public ResponsePaymentDto(Payment payment, BigDecimal updatedBalance) {
+        this(payment.getRequestId(),
+                payment.getTotal(),
+                payment.getStatus(),
+                payment.getUsernameFrom(),
+                payment.getUsernameTo(),
+                null,
+                null,
+                payment.getCreatedAt(),
+                payment.getProcessedAt(),
+                payment.getMessage(),
+                updatedBalance);
     }
 }

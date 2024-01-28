@@ -91,6 +91,9 @@ def process_messages(payment_schema, update_payment_schema, bootstrap_servers, g
             if payment_record.get_total() >= 10000:
                 check_failed = True
                 reason_failed = "Cannot make a payment greater than or equal to 10000"
+            elif payment_record.get_total() <= 5:
+                check_failed = True
+                reason_failed = "Cannot make a payment less than or equal to 5"
 
             update_payment = UpdatePayment({
                 "requestId": payment_record.get_requestId(),

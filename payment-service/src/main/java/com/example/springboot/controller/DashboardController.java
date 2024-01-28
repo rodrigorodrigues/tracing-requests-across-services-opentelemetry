@@ -63,7 +63,7 @@ public class DashboardController extends AbstractController {
                         .doOnNext(n -> log.info("Getting notification: {}", n)));
     }
 
-    @PostMapping(value = "/api/v1/dashboard/notifications", produces=MediaType.TEXT_EVENT_STREAM_VALUE)
+    @PostMapping(value = "/api/v1/dashboard/notifications")
     @PreAuthorize("#notificationRequestDto.username() == @dashboardController.getUsername(authentication)")
     public Mono<ResponseEntity<ResponsePaymentDto>> processNotification(@Valid @RequestBody NotificationRequestDto notificationRequestDto) {
         log.debug("Processing notificationRequestDto: {}", notificationRequestDto);
